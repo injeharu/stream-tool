@@ -1,10 +1,9 @@
 """新バージョンのコミット・プッシュ・GitHub Release作成・配布用ZIP添付を一括で行うツール。
 
 使い方: release.bat をダブルクリック(内部でこのスクリプトを呼ぶ)。
-GitHubトークンは画面に表示されず、保存もされない(毎回入力)。
+GitHubトークンは github_token.txt に保存して再利用できる(.gitignore済み・配布ZIPにも入らない)。
 """
 
-import getpass
 import json
 import os
 import re
@@ -16,11 +15,16 @@ import zipfile
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.py")
+TOKEN_PATH = os.path.join(BASE_DIR, "github_token.txt")
 
-GITHUB_REPO = "injeharu/stream-tool"  # owner/repo
+sys.path.insert(0, BASE_DIR)
+import config  # GITHUB_REPO を共有(リポジトリ名の二重管理を避ける)
+
+GITHUB_REPO = config.GITHUB_REPO
 
 EXCLUDE_DIR_NAMES = {".git", "__pycache__", ".venv", "venv"}
-EXCLUDE_FILE_NAMES = {"data.db", "data.db-wal", "data.db-shm"}
+# github_token.txt は絶対に配布ZIPへ入れない(トークン流出防止)
+EXCLUDE_FILE_NAMES = {"data.db", "data.db-wal", "data.db-shm", "github_token.txt"}
 
 
 def run(cmd, **kwargs):
@@ -113,6 +117,29 @@ def upload_asset(token, upload_url_template, zip_path):
     print("アップロード完了。")
 
 
+def load_or_ask_token():
+    """github_token.txt があればそれを使う。無ければ入力(コピペ可)を求め、保存するか選べる。"""
+    if os.path.exists(TOKEN_PATH):
+        with open(TOKEN_PATH, "r", encoding="utf-8") as f:
+            token = f.read().strip()
+        if token:
+            print(f"\n保存済みのトークンを使用します({os.path.basename(TOKEN_PATH)})。")
+            return token
+
+    print("\nGitHubの個人アクセストークン(repo権限)を貼り付けてください。")
+    print("取得方法: GitHub右上のアイコン → Settings → Developer settings → Personal access tokens")
+    token = input("トークン(右クリックで貼り付け): ").strip()
+    if not token:
+        return ""
+
+    save = input("次回のためにgithub_token.txtへ保存しますか? このファイルはGitや配布ZIPには入りません (y/n): ").strip().lower()
+    if save == "y":
+        with open(TOKEN_PATH, "w", encoding="utf-8") as f:
+            f.write(token)
+        print(f"保存しました: {TOKEN_PATH}")
+    return token
+
+
 def main():
     print("=== 配信サポートツール リリース作成ツール ===\n")
 
@@ -147,10 +174,7 @@ def main():
 
     zip_path = build_zip(new_version)
 
-    print("\nGitHubの個人アクセストークン(repo権限)を入力してください。")
-    print("取得方法: GitHub右上のアイコン → Settings → Developer settings → Personal access tokens")
-    print("入力内容は画面に表示されず、どこにも保存されません。")
-    token = getpass.getpass("トークン: ").strip()
+    token = load_or_ask_token()
     if not token:
         print("トークンが入力されなかったため、GitHub Releaseの作成をスキップしました。")
         print(f"コミット・プッシュ・ZIP作成({os.path.basename(zip_path)})は完了しています。")

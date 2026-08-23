@@ -62,7 +62,12 @@ class AnonIrcClient:
         if line.startswith("PING"):
             self._send(sock, line.replace("PING", "PONG", 1))
             return
-        self.on_line(line)
+        # 1行の処理エラーで接続を巻き込まない(サブスク検知を止めないことを最優先)
+        try:
+            self.on_line(line)
+        except Exception as e:
+            print(f"[IRC] メッセージ処理中にエラー(接続は維持): {e}")
+            print(f"  対象行: {line[:200]}")
 
     def _send(self, sock, msg):
         sock.sendall((msg + "\r\n").encode("utf-8"))

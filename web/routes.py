@@ -4,7 +4,9 @@ import csv
 import io
 import json
 
-from flask import Flask, Blueprint, render_template, request, redirect, url_for, Response
+from urllib.parse import urlparse
+
+from flask import Flask, Blueprint, render_template, request, redirect, url_for, Response, abort
 
 import autostart
 import config
@@ -14,6 +16,22 @@ import milestone
 import ranking
 
 bp = Blueprint("main", __name__)
+
+_LOCAL_HOSTS = {"127.0.0.1", "localhost"}
+
+
+@bp.before_request
+def verify_local_request():
+    """外部サイトからの遠隔操作(CSRF)やDNSリバインディング対策。
+    ローカル(127.0.0.1)以外を名乗るリクエストと、外部ページ発のPOSTを拒否する。"""
+    host = (request.host or "").split(":")[0].lower()
+    if host not in _LOCAL_HOSTS:
+        abort(403)
+    origin = request.headers.get("Origin")
+    if origin:
+        origin_host = (urlparse(origin).hostname or "").lower()
+        if origin_host not in _LOCAL_HOSTS:
+            abort(403)
 
 
 @bp.context_processor
@@ -62,6 +80,14 @@ def history():
     return render_template("history.html", shipped=shipped, active="history")
 
 
+def _csv_safe(value):
+    """Excelが数式として解釈しないよう先頭の記号を無害化する(視聴者名は信用できない入力のため)。"""
+    s = str(value)
+    if s and s[0] in ("=", "+", "-", "@", "\t"):
+        return "'" + s
+    return s
+
+
 @bp.route("/history.csv")
 def history_csv():
     shipped = db.list_shipped_milestones()
@@ -73,13 +99,13 @@ def history_csv():
         kind_label = "通算" if row["kind"] == "cumulative" else "連続"
         writer.writerow(
             [
-                row["login"],
-                row["display_name"] or row["login"],
+                _csv_safe(row["login"]),
+                _csv_safe(row["display_name"] or row["login"]),
                 kind_label,
                 row["threshold"],
                 row["reached_at"],
                 row["shipped_at"],
-                row["memo"] or "",
+                _csv_safe(row["memo"] or ""),
             ]
         )
     return Response(

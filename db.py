@@ -297,10 +297,13 @@ def count_known_subscribers():
 
 def forecast_upcoming(months_ahead=3):
     """現在の通算/連続月数から、あと何ヶ月で各閾値に届くかを一覧化する。"""
-    rows = _fetchall("SELECT login, display_name, cumulative_months, streak_months FROM sub_state")
+    rows = _fetchall("SELECT login, display_name, cumulative_months, streak_months, tier FROM sub_state")
 
     results = []
     for row in rows:
+        # 発送待ち一覧と同じ基準で、発送対象外ティアの人は表示しない
+        if not is_tier_eligible(row["tier"]):
+            continue
         for kind, current in (
             ("cumulative", row["cumulative_months"]),
             ("streak", row["streak_months"]),
