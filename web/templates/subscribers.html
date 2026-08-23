@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}サブスク一覧 - 配信サポートツール{% endblock %}
+{% block heading %}👥 サブスク一覧{% endblock %}
+{% block content %}
+
+<div class="panel">
+  <h2>視聴者を手動で追加・更新</h2>
+  <p style="color:var(--text-dim); font-size:0.85rem; margin-top:-8px;">
+    ここで入力した月数は、次にチャットで再サブスク(共有あり)が来ると自動的に正式な値へ上書きされます。
+  </p>
+  <form method="post" action="{{ url_for('main.subscribers_manual') }}">
+    <div class="form-row">
+      <label>ログイン名(小文字)</label>
+      <input type="text" name="login" required placeholder="例: sample_user">
+      <label>表示名</label>
+      <input type="text" name="display_name" placeholder="表示名(任意)">
+    </div>
+    <div class="form-row">
+      <label>通算月数</label>
+      <input type="number" name="cumulative_months" class="num-sm" min="0">
+      <label>連続月数</label>
+      <input type="number" name="streak_months" class="num-sm" min="0">
+      <button type="submit" class="btn btn-primary" style="width:auto;">保存</button>
+    </div>
+  </form>
+</div>
+
+{% if rows %}
+<table>
+  <thead>
+    <tr>
+      <th>視聴者</th>
+      <th>通算月数</th>
+      <th>連続月数</th>
+      <th>ティア</th>
+      <th>情報源</th>
+      <th>更新日時</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.display_name or r.login }}</td>
+      <td>{{ r.cumulative_months if r.cumulative_months is not none else '-' }}</td>
+      <td>{{ r.streak_months if r.streak_months is not none else '-' }}</td>
+      <td>{% if r.tier %}<span class="tier-badge">{{ tier_labels.get(r.tier, r.tier) }}</span>{% else %}-{% endif %}</td>
+      <td>{{ '💬 チャット' if r.source == 'chat' else '✍ 手入力' }}</td>
+      <td>{{ r.updated_at or '-' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">まだサブスク情報がありません。</div>
+{% endif %}
+
+{% endblock %}

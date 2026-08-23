@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}発送履歴 - 配信サポートツール{% endblock %}
+{% block heading %}📚 発送履歴{% endblock %}
+{% block content %}
+
+<div class="form-row">
+  <a href="{{ url_for('main.history_csv') }}" class="btn btn-primary" style="width:auto; text-decoration:none; display:inline-block;">⬇ CSVエクスポート</a>
+</div>
+
+{% if shipped %}
+<table>
+  <thead>
+    <tr>
+      <th>視聴者</th>
+      <th>種別</th>
+      <th>月数</th>
+      <th>到達日時</th>
+      <th>発送日時</th>
+      <th>メモ</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in shipped %}
+    <tr>
+      <td>{{ m.display_name or m.login }}</td>
+      <td><span class="badge kind-{{ m.kind }}">{{ '通算' if m.kind == 'cumulative' else '連続' }}</span></td>
+      <td>{{ m.threshold }}ヶ月</td>
+      <td>{{ m.reached_at }}</td>
+      <td>{{ m.shipped_at }}</td>
+      <td>{{ m.memo or '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">発送履歴はまだありません。</div>
+{% endif %}
+
+{% endblock %}

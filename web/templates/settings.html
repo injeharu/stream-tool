@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}設定 - 配信サポートツール{% endblock %}
+{% block heading %}⚙ 設定{% endblock %}
+{% block content %}
+
+<div class="panel" style="border-color:var(--accent); background:var(--accent-soft);">
+  <h2 style="color:var(--accent-bright);">📖 はじめに</h2>
+  <p style="font-size:0.9rem; line-height:1.7; margin:0 0 12px;">
+    使い方に迷ったら、まずチュートリアルをご覧ください。むずかしい設定は不要で、
+    下の「チャンネル名」を入力して保存するだけで基本的な機能が動き始めます。
+  </p>
+  <button type="button" class="btn btn-primary" style="width:auto;" onclick="tutorialOpen()">📖 チュートリアルを見る</button>
+</div>
+
+<div class="panel">
+  <h2>基本設定</h2>
+  <form method="post" action="{{ url_for('main.settings') }}">
+    <div class="form-row">
+      <label>チャンネル名</label>
+      <input type="text" name="channel_name" value="{{ channel_name }}" placeholder="例: your_channel">
+    </div>
+    <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-8px;">
+      あなたのTwitchのユーザー名(配信URLの一部)を入力してください。これだけで動きます。
+      変更した場合は、反映のためツールの再起動が必要です。
+    </p>
+
+    <div class="form-row">
+      <label>判定対象</label>
+      <label style="display:inline-flex; align-items:center; gap:4px; margin-right:14px; color:var(--text);">
+        <input type="checkbox" name="kind_cumulative" {% if kind_cumulative %}checked{% endif %}>
+        通算月数
+      </label>
+      <label style="display:inline-flex; align-items:center; gap:4px; color:var(--text);">
+        <input type="checkbox" name="kind_streak" {% if kind_streak %}checked{% endif %}>
+        連続月数
+      </label>
+    </div>
+    <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-8px;">
+      「通算」は今までの合計サブスク月数、「連続」は途切れずに続けている月数です。
+      チェックを外した種別は、発送待ち・通知・到達予定のすべてで使われなくなります(記録は消えず、戻すと再表示されます)。
+    </p>
+
+    <div class="form-row">
+      <label>通算月数の閾値</label>
+      <input type="text" name="cumulative_thresholds" value="{{ cumulative_thresholds }}" placeholder="例: 6,12,24">
+    </div>
+    <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-8px;">
+      この月数に届いた視聴者が、自動で「発送待ち」リストに追加されます。カンマ区切りで何個でも指定できます。
+    </p>
+    <div class="form-row">
+      <label>通算・繰り返し間隔</label>
+      <input type="number" name="cumulative_interval" class="num-sm" min="1" value="{{ cumulative_interval }}" placeholder="空欄=なし">
+      <span style="font-size:0.85rem; color:var(--text-dim);">例えば6を入れると、6,12,18,24…と上限なく繰り返し届いた扱いになります(空欄なら繰り返しなし)</span>
+    </div>
+    <div class="form-row">
+      <label>連続月数の閾値</label>
+      <input type="text" name="streak_thresholds" value="{{ streak_thresholds }}" placeholder="例: 6,12,24">
+    </div>
+    <div class="form-row">
+      <label>連続・繰り返し間隔</label>
+      <input type="number" name="streak_interval" class="num-sm" min="1" value="{{ streak_interval }}" placeholder="空欄=なし">
+      <span style="font-size:0.85rem; color:var(--text-dim);">連続月数版の繰り返し設定です</span>
+    </div>
+
+    <div class="form-row">
+      <label>デスクトップ通知</label>
+      <input type="checkbox" name="notify_enabled" {% if notify_enabled %}checked{% endif %}>
+      <span style="font-size:0.85rem; color:var(--text-dim);">節目の月数に届いたら、Windowsの画面右下に通知を出します</span>
+    </div>
+
+    <div class="form-row">
+      <label>PC起動時に自動起動</label>
+      {% if autostart_available %}
+      <input type="checkbox" name="autostart_enabled" {% if autostart_enabled %}checked{% endif %}>
+      <span style="font-size:0.85rem; color:var(--text-dim);">ONにすると、パソコンにサインインしたときに自動でこのツールが立ち上がります(起動し忘れ防止)</span>
+      {% else %}
+      <span style="font-size:0.85rem; color:var(--text-dim);">この環境では利用できません(Windows専用の機能です)</span>
+      {% endif %}
+    </div>
+
+    <div class="form-row">
+      <label>更新の自動確認</label>
+      {% if update_check_configured %}
+      <input type="checkbox" name="update_check_enabled" {% if update_check_enabled %}checked{% endif %}>
+      <span style="font-size:0.85rem; color:var(--text-dim);">新しいバージョンが公開されたら、左下にお知らせを表示します</span>
+      {% else %}
+      <span style="font-size:0.85rem; color:var(--text-dim);">現在このツールでは利用できません(配布準備中の機能です)</span>
+      {% endif %}
+    </div>
+
+    <div class="form-row" style="align-items:flex-start;">
+      <label>発送対象ティア</label>
+      <div>
+        {% for t in all_tiers %}
+        <label style="display:inline-flex; align-items:center; gap:4px; margin-right:14px; color:var(--text);">
+          <input type="checkbox" name="eligible_tiers" value="{{ t }}" {% if t in eligible_tiers %}checked{% endif %}>
+          {{ tier_labels[t] }}
+        </label>
+        {% endfor %}
+        <p style="color:var(--text-dim); font-size:0.82rem; margin:6px 0 0;">
+          サブスクの種類(ティア)ごとに、グッズ発送の対象にするかを選べます。Tier 3が一番高額な応援です。
+          チェックを外したティアの人は発送待ちリストに表示されなくなります(記録は残り、チェックを戻すと再表示されます)。
+        </p>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:auto;">保存</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>キーワードランキングの登録キーワード</h2>
+  <p style="color:var(--text-dim); font-size:0.85rem; margin-top:-8px;">
+    表記ゆれはカンマ区切りで複数指定できます(例: かわいい, カワイイ, kawaii)。
+  </p>
+  <form method="post" action="{{ url_for('main.add_keyword') }}">
+    <div class="form-row">
+      <label>ラベル</label>
+      <input type="text" name="label" placeholder="例: かわいい" required>
+      <label>表記ゆれパターン</label>
+      <input type="text" name="patterns" placeholder="かわいい, カワイイ, kawaii" style="flex:1;" required>
+      <button type="submit" class="btn btn-primary" style="width:auto;">追加</button>
+    </div>
+  </form>
+
+  {% if keywords %}
+  <table>
+    <thead>
+      <tr><th>ラベル</th><th>パターン</th><th style="width:80px;"></th></tr>
+    </thead>
+    <tbody>
+      {% for kw in keywords %}
+      <tr>
+        <td>{{ kw.label }}</td>
+        <td>{{ kw.patterns }}</td>
+        <td>
+          <form method="post" action="{{ url_for('main.delete_keyword', keyword_id=kw.id) }}"
+                onsubmit="return confirm('このキーワードを削除しますか?');">
+            <button type="submit" class="btn btn-ghost btn-sm">削除</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-dim); font-size:0.85rem;">まだキーワードが登録されていません。</p>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>既知の制約</h2>
+  <ul style="color:var(--text-dim); font-size:0.85rem; line-height:1.7;">
+    <li>視聴者が再サブスク時に「共有しない」を選んだ場合、チャットに流れず自動取得できません。</li>
+    <li>連続月数は、視聴者が連続表示を有効にしている場合のみ取得できます。</li>
+    <li>過去のデータは遡れません。ツール稼働開始以降の再サブスクから蓄積されます。</li>
+    <li>ツールが起動していない間のイベントは取得できません。配信開始前の起動を推奨します。</li>
+  </ul>
+</div>
+
+{% endblock %}

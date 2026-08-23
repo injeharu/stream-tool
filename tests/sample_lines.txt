@@ -1,0 +1,29 @@
+# USERNOTICE/PRIVMSGの生ログサンプル。tools/replay.py で読み込んでテストする。
+# '#' で始まる行と空行は無視される。
+
+# 新規サブスク(通算1ヶ月)
+@badge-info=;badges=subscriber/0;color=;display-name=NewSubUser;emotes=;id=yyyy;login=newsubuser;mod=0;msg-id=sub;msg-param-cumulative-months=1;msg-param-should-share-streak=0;msg-param-sub-plan=1000;msg-param-sub-plan-name=Channel\sSubscription;room-id=1337;subscriber=1;system-msg=NewSubUser\ssubscribed\swith\sTwitch\sPrime!;tmi-sent-ts=1507246400000;user-id=8888 :tmi.twitch.tv USERNOTICE #samplechannel
+
+# 再サブスク・連続月数を共有あり(通算6ヶ月/連続2ヶ月) → 6ヶ月の閾値に到達するはず
+@badge-info=;badges=staff/1,broadcaster/1;color=#008000;display-name=ronni;emotes=;id=db25007f-7a18-43eb-9379-80131e44d633;login=ronni;mod=0;msg-id=resub;msg-param-cumulative-months=6;msg-param-streak-months=2;msg-param-should-share-streak=1;msg-param-sub-plan=Prime;msg-param-sub-plan-name=Channel\sSubscription\s(forstrongwomen);room-id=1337;subscriber=1;system-msg=ronni\shas\ssubscribed\sfor\s6\smonths!;tmi-sent-ts=1507246378648;turbo=0;user-id=1337;user-type=staff :tmi.twitch.tv USERNOTICE #samplechannel :Great stream -- keep it up!
+
+# 同じ内容をもう一度流す(二重登録・二重通知が起きないことの確認用)
+@badge-info=;badges=staff/1,broadcaster/1;color=#008000;display-name=ronni;emotes=;id=db25007f-7a18-43eb-9379-80131e44d633;login=ronni;mod=0;msg-id=resub;msg-param-cumulative-months=6;msg-param-streak-months=2;msg-param-should-share-streak=1;msg-param-sub-plan=Prime;msg-param-sub-plan-name=Channel\sSubscription\s(forstrongwomen);room-id=1337;subscriber=1;system-msg=ronni\shas\ssubscribed\sfor\s6\smonths!;tmi-sent-ts=1507246378648;turbo=0;user-id=1337;user-type=staff :tmi.twitch.tv USERNOTICE #samplechannel :Great stream -- keep it up!
+
+# 再サブスク・連続月数を共有しない(通算10ヶ月) → streakはNULLのまま
+@badge-info=;badges=;color=;display-name=ExampleUser2;emotes=;id=xxxx;login=exampleuser2;mod=0;msg-id=resub;msg-param-cumulative-months=10;msg-param-should-share-streak=0;msg-param-sub-plan=1000;msg-param-sub-plan-name=Channel\sSubscription;room-id=1337;subscriber=1;system-msg=ExampleUser2\shas\ssubscribed\sfor\s10\smonths!;tmi-sent-ts=1507246390000;user-id=9999 :tmi.twitch.tv USERNOTICE #samplechannel
+
+# ExampleUser2 が翌月12ヶ月に到達 → 12ヶ月の閾値に到達するはず
+@badge-info=;badges=;color=;display-name=ExampleUser2;emotes=;id=xxxy;login=exampleuser2;mod=0;msg-id=resub;msg-param-cumulative-months=12;msg-param-should-share-streak=0;msg-param-sub-plan=1000;msg-param-sub-plan-name=Channel\sSubscription;room-id=1337;subscriber=1;system-msg=ExampleUser2\shas\ssubscribed\sfor\s12\smonths!;tmi-sent-ts=1507246395000;user-id=9999 :tmi.twitch.tv USERNOTICE #samplechannel
+
+# ギフトサブ(受け取り側の月数は含まれない。イベントとしては記録するが閾値判定はしない)
+@badge-info=;badges=;color=;display-name=Gifter1;emotes=;id=zzzz;login=gifter1;mod=0;msg-id=subgift;msg-param-months=1;msg-param-recipient-display-name=Recipient1;msg-param-recipient-id=7777;msg-param-recipient-user-name=recipient1;msg-param-sub-plan-name=Channel\sSubscription;msg-param-sub-plan=1000;room-id=1337;subscriber=0;system-msg=Gifter1\sgifted\sa\sTier\s1\ssub\sto\sRecipient1!;tmi-sent-ts=1507246410000;user-id=6666 :tmi.twitch.tv USERNOTICE #samplechannel
+
+# 通常チャット(発言数・初見判定などに使う)
+@badge-info=;badges=subscriber/6;color=#1E90FF;display-name=ChatUser;emotes=;id=aaaa;mod=0;room-id=1337;subscriber=1;tmi-sent-ts=1507246420000;turbo=0;user-id=5555;user-type= :chatuser!chatuser@chatuser.tmi.twitch.tv PRIVMSG #samplechannel :かわいい配信だった!
+
+# ビッツ付きチャット(ビッツランキングの集計対象)
+@badge-info=;badges=bits/100;bits=100;color=#1E90FF;display-name=BitsUser;emotes=;id=cccc;mod=0;room-id=1337;subscriber=0;tmi-sent-ts=1507246425000;turbo=0;user-id=3333;user-type= :bitsuser!bitsuser@bitsuser.tmi.twitch.tv PRIVMSG #samplechannel :Cheer100 応援してます!
+
+# 24ヶ月到達の例
+@badge-info=;badges=subscriber/24;color=;display-name=LongTimeFan;emotes=;id=bbbb;login=longtimefan;mod=0;msg-id=resub;msg-param-cumulative-months=24;msg-param-streak-months=24;msg-param-should-share-streak=1;msg-param-sub-plan=1000;msg-param-sub-plan-name=Channel\sSubscription;room-id=1337;subscriber=1;system-msg=LongTimeFan\shas\ssubscribed\sfor\s24\smonths!;tmi-sent-ts=1507246430000;user-id=4444 :tmi.twitch.tv USERNOTICE #samplechannel

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>{% block title %}配信サポートツール{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='theme.js') }}" defer></script>
+<script src="{{ url_for('static', filename='tutorial.js') }}" defer></script>
+</head>
+<body>
+<div class="sidebar">
+  <div class="brand">🎁 発送台帳</div>
+  <a href="{{ url_for('main.index') }}" class="{{ 'active' if active == 'index' }}">📦 発送待ち</a>
+  <a href="{{ url_for('main.history') }}" class="{{ 'active' if active == 'history' }}">📚 発送履歴</a>
+  <a href="{{ url_for('main.subscribers') }}" class="{{ 'active' if active == 'subscribers' }}">👥 サブスク一覧</a>
+  <a href="{{ url_for('main.forecast') }}" class="{{ 'active' if active == 'forecast' }}">🔮 到達予定</a>
+  <a href="{{ url_for('main.ranking_page') }}" class="{{ 'active' if active == 'ranking' }}">🏆 ランキング</a>
+  <a href="{{ url_for('main.settings') }}" class="{{ 'active' if active == 'settings' }}">⚙ 設定</a>
+  <div style="flex:1;"></div>
+  {% if available_update %}
+  <a href="{{ available_update.url }}" target="_blank" rel="noopener" class="update-badge">
+    🔄 更新があります v{{ available_update.version }}
+  </a>
+  {% endif %}
+  <div class="version-label">v{{ app_version }}</div>
+</div>
+<div class="main">
+  <div class="topbar">
+    <h1>{% block heading %}{% endblock %}</h1>
+    <div class="right">
+      <span class="status-badge">
+        {% if irc_status == 'connected' %}
+          <span class="status-dot connected"></span> 接続中
+        {% elif irc_status == 'connecting' %}
+          <span class="status-dot connecting"></span> 再接続中
+        {% else %}
+          <span class="status-dot disconnected"></span> 切断中
+        {% endif %}
+      </span>
+      <button class="theme-toggle" onclick="toggleTheme()">🌗 テーマ切替</button>
+    </div>
+  </div>
+  <div class="content">
+    {% if request.args.get('saved') %}
+      <div class="flash">保存しました</div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<div id="tutorial-overlay" class="tutorial-overlay" data-autoshow="{{ '1' if show_tutorial else '0' }}"
+     style="display: {{ 'flex' if show_tutorial else 'none' }};">
+  <div class="tutorial-card">
+    <div class="tutorial-progress" id="tutorial-progress"></div>
+    <h2 id="tutorial-title"></h2>
+    <p id="tutorial-body"></p>
+    <div class="tutorial-actions">
+      <button class="btn btn-ghost btn-sm" onclick="tutorialSkip()">スキップ</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-ghost btn-sm" id="tutorial-prev" onclick="tutorialPrev()">← 前へ</button>
+      <button class="btn btn-primary btn-sm" id="tutorial-next" onclick="tutorialNext()">次へ</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

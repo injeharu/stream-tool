@@ -1,0 +1,469 @@
+:root {
+  --bg: #0f0e17;
+  --bg-elevated: #171522;
+  --bg-card: #1e1b2c;
+  --bg-hover: #262238;
+  --border: #322f45;
+  --text: #e8e6f0;
+  --text-dim: #9a96b0;
+  --accent: #9146ff;
+  --accent-bright: #a970ff;
+  --accent-soft: rgba(145, 70, 255, 0.18);
+  --success: #3dd68c;
+  --success-soft: rgba(61, 214, 140, 0.16);
+  --warn: #ffb84d;
+  --warn-soft: rgba(255, 184, 77, 0.16);
+  --danger: #ff5c7a;
+  --danger-soft: rgba(255, 92, 122, 0.16);
+  --gold: #f0c419;
+  --silver: #c7c9d9;
+  --bronze: #d38b5d;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+body.light {
+  --bg: #f4f3fa;
+  --bg-elevated: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f0edfa;
+  --border: #e2dff0;
+  --text: #221f2e;
+  --text-dim: #6b6780;
+  --accent: #7c3aed;
+  --accent-bright: #6d28d9;
+  --accent-soft: rgba(124, 58, 237, 0.1);
+  --success-soft: rgba(61, 214, 140, 0.14);
+  --warn-soft: rgba(255, 184, 77, 0.18);
+  --danger-soft: rgba(255, 92, 122, 0.14);
+  --shadow: 0 4px 14px rgba(30, 20, 60, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  min-height: 100vh;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* ---------- サイドバー ---------- */
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border);
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar .brand {
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: 0 10px 18px;
+  color: var(--accent-bright);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.92rem;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sidebar a:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.sidebar a.active {
+  background: var(--accent-soft);
+  color: var(--accent-bright);
+  font-weight: 600;
+}
+
+.update-badge {
+  display: block;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  margin: 4px 4px 8px;
+  animation: pulse-update 2s ease-in-out infinite;
+}
+
+.update-badge:hover {
+  opacity: 0.85;
+}
+
+@keyframes pulse-update {
+  0%, 100% { box-shadow: 0 0 0 0 var(--warn-soft); }
+  50% { box-shadow: 0 0 0 4px transparent; }
+}
+
+.version-label {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  padding: 4px 0 2px;
+}
+
+/* ---------- チュートリアル ---------- */
+
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.tutorial-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px 30px;
+  width: 440px;
+  max-width: calc(100vw - 40px);
+}
+
+.tutorial-progress {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+}
+
+.tutorial-card h2 {
+  margin: 0 0 12px;
+  color: var(--accent-bright);
+}
+
+.tutorial-card p {
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 0.92rem;
+  min-height: 90px;
+}
+
+.tutorial-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ---------- メインエリア ---------- */
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.topbar h1 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.topbar .right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.status-dot.connecting { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.status-dot.disconnected { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+.theme-toggle {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.theme-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.content {
+  padding: 24px;
+  flex: 1;
+}
+
+/* ---------- タイル ---------- */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+
+.tile .tile-value {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--accent-bright);
+}
+
+.tile .tile-label {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+/* ---------- カード ---------- */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+
+.card .card-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 8px;
+}
+
+.card .card-meta {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  margin-bottom: 10px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.card-actions form {
+  flex: 1;
+}
+
+/* ---------- バッジ ---------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.badge.kind-cumulative { background: var(--accent-soft); color: var(--accent-bright); }
+.badge.kind-streak { background: var(--warn-soft); color: var(--warn); }
+
+.badge.milestone-6 { background: var(--bronze); color: #2a1a0f; }
+.badge.milestone-12 { background: var(--silver); color: #1f1f28; }
+.badge.milestone-24 { background: var(--gold); color: #2a2205; }
+.badge.milestone-default { background: var(--accent-soft); color: var(--accent-bright); }
+
+.tier-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--bg-hover);
+  color: var(--text-dim);
+}
+
+/* ---------- ボタン ---------- */
+
+.btn {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: 600;
+  width: 100%;
+}
+
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent-bright); }
+
+.btn-success { background: var(--success-soft); color: var(--success); }
+.btn-success:hover { opacity: 0.85; }
+
+.btn-ghost { background: var(--bg-hover); color: var(--text-dim); }
+.btn-ghost:hover { color: var(--text); }
+
+.btn-sm { padding: 4px 10px; font-size: 0.78rem; width: auto; }
+
+/* ---------- テーブル ---------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+th, td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+
+th {
+  color: var(--text-dim);
+  font-weight: 600;
+  background: var(--bg-elevated);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+tr:hover td {
+  background: var(--bg-hover);
+}
+
+/* ---------- フォーム ---------- */
+
+.form-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.form-row label {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  min-width: 120px;
+}
+
+input[type="text"], input[type="number"], select {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 0.88rem;
+}
+
+input.num-sm {
+  width: 70px;
+}
+
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+}
+
+.panel h2 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.empty-state {
+  color: var(--text-dim);
+  text-align: center;
+  padding: 40px 0;
+}
+
+.progress-bar {
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+  width: 120px;
+}
+
+.progress-bar-fill {
+  background: var(--accent);
+  height: 100%;
+}
+
+.flash {
+  background: var(--success-soft);
+  color: var(--success);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+}

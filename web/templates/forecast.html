@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}到達予定 - 配信サポートツール{% endblock %}
+{% block heading %}🔮 到達予定{% endblock %}
+{% block content %}
+
+<p style="color:var(--text-dim); font-size:0.88rem;">
+  今の月数から、あと数ヶ月で閾値に届きそうな視聴者です。グッズの事前準備にご利用ください。
+</p>
+
+{% if upcoming %}
+<table>
+  <thead>
+    <tr>
+      <th>視聴者</th>
+      <th>種別</th>
+      <th>現在</th>
+      <th>目標</th>
+      <th>進捗</th>
+      <th>見込み</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in upcoming %}
+    <tr>
+      <td>{{ u.display_name or u.login }}</td>
+      <td><span class="badge kind-{{ u.kind }}">{{ '通算' if u.kind == 'cumulative' else '連続' }}</span></td>
+      <td>{{ u.current }}ヶ月</td>
+      <td>{{ u.threshold }}ヶ月</td>
+      <td>
+        <div class="progress-bar">
+          <div class="progress-bar-fill" style="width: {{ (u.current / u.threshold * 100) | round(0, 'floor') }}%;"></div>
+        </div>
+      </td>
+      <td>あと{{ u.remaining }}ヶ月</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">今後しばらくは到達見込みの視聴者はいません。</div>
+{% endif %}
+
+{% endblock %}

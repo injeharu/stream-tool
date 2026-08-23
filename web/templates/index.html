@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}発送待ち - 配信サポートツール{% endblock %}
+{% block heading %}📦 発送待ち{% endblock %}
+{% block content %}
+
+<div class="tiles">
+  <div class="tile">
+    <div class="tile-value">{{ tiles.pending_count }}</div>
+    <div class="tile-label">発送待ち件数</div>
+  </div>
+  <div class="tile">
+    <div class="tile-value">{{ tiles.reached_this_month }}</div>
+    <div class="tile-label">今月の到達件数</div>
+  </div>
+  <div class="tile">
+    <div class="tile-value">{{ tiles.known_subscribers }}</div>
+    <div class="tile-label">月数を把握している人数</div>
+  </div>
+</div>
+
+{% if pending %}
+<div class="card-grid">
+  {% for m in pending %}
+  <div class="card">
+    <div class="card-name">{{ m.display_name or m.login }}</div>
+    <div class="card-meta">
+      <span class="badge kind-{{ m.kind }}">{{ '通算' if m.kind == 'cumulative' else '連続' }}</span>
+      <span class="badge milestone-{{ m.threshold if m.threshold in [6,12,24] else 'default' }}">{{ m.threshold }}ヶ月</span>
+      <br>達成日: {{ m.reached_at }}
+    </div>
+    <div class="card-actions">
+      <form method="post" action="{{ url_for('main.ship_milestone', milestone_id=m.id) }}">
+        <input type="text" name="memo" placeholder="発送メモ(任意)" style="width:100%; margin-bottom:6px;">
+        <button type="submit" class="btn btn-success">✅ 発送済みにする</button>
+      </form>
+    </div>
+    <div class="card-actions">
+      <form method="post" action="{{ url_for('main.dismiss_milestone_route', milestone_id=m.id) }}"
+            onsubmit="return confirm('この項目を対応不要として一覧から消しますか?');">
+        <button type="submit" class="btn btn-ghost btn-sm">対応不要にする</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">現在、発送待ちの項目はありません。</div>
+{% endif %}
+
+{% endblock %}
