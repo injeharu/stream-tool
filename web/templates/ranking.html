@@ -3,7 +3,7 @@
 {% block heading %}🏆 ランキング{% endblock %}
 {% block content %}
 
-<div class="form-row">
+<div id="tour-ranking-tabs" class="form-row">
   <a href="{{ url_for('main.ranking_page', tab='message', period=period) }}"
      class="btn {{ 'btn-primary' if tab == 'message' else 'btn-ghost' }}" style="width:auto;">💬 コメント数</a>
   <a href="{{ url_for('main.ranking_page', tab='keyword', period=period, keyword_id=keyword_id) }}"

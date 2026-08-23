@@ -3,6 +3,7 @@
 {% block heading %}⚙ 設定{% endblock %}
 {% block content %}
 
+{% if not tutorial_seen %}
 <div class="panel" style="border-color:var(--accent); background:var(--accent-soft);">
   <h2 style="color:var(--accent-bright);">📖 はじめに</h2>
   <p style="font-size:0.9rem; line-height:1.7; margin:0 0 12px;">
@@ -11,13 +12,18 @@
   </p>
   <button type="button" class="btn btn-primary" style="width:auto;" onclick="tutorialOpen()">📖 チュートリアルを見る</button>
 </div>
+{% else %}
+<div class="form-row" style="margin-bottom:20px;">
+  <button type="button" class="btn btn-ghost" style="width:auto;" onclick="tutorialOpen()">📖 チュートリアルを見る</button>
+</div>
+{% endif %}
 
 <div class="panel">
   <h2>基本設定</h2>
   <form method="post" action="{{ url_for('main.settings') }}">
     <div class="form-row">
       <label>チャンネル名</label>
-      <input type="text" name="channel_name" value="{{ channel_name }}" placeholder="例: your_channel">
+      <input id="tour-channel-input" type="text" name="channel_name" value="{{ channel_name }}" placeholder="例: your_channel">
     </div>
     <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-8px;">
       あなたのTwitchのユーザー名(配信URLの一部)を入力してください。これだけで動きます。

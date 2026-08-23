@@ -177,6 +177,44 @@ body {
   margin-top: 16px;
 }
 
+.tour-highlight {
+  position: fixed;
+  border: 3px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.55), 0 0 18px var(--accent);
+  pointer-events: none;
+  z-index: 999;
+  transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
+}
+
+.tour-card {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 26px;
+  width: 420px;
+  max-width: calc(100vw - 40px);
+  z-index: 1001;
+}
+
+.tour-card h2 {
+  margin: 0 0 8px;
+  color: var(--accent-bright);
+  font-size: 1.05rem;
+}
+
+.tour-card p {
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 0.88rem;
+  margin: 0;
+}
+
 /* ---------- メインエリア ---------- */
 
 .main {

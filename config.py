@@ -21,6 +21,5 @@ RANKING_TOP_N = 20
 
 APP_VERSION = "1.0.0"
 UPDATE_CHECK_URL = "https://api.github.com/repos/injeharu/stream-tool/releases/latest"
-UPDATE_RELEASE_PAGE = "https://github.com/injeharu/stream-tool/releases"
 UPDATE_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
 

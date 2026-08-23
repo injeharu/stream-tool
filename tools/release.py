@@ -1,0 +1,168 @@
+"""新バージョンのコミット・プッシュ・GitHub Release作成・配布用ZIP添付を一括で行うツール。
+
+使い方: release.bat をダブルクリック(内部でこのスクリプトを呼ぶ)。
+GitHubトークンは画面に表示されず、保存もされない(毎回入力)。
+"""
+
+import getpass
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+import zipfile
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONFIG_PATH = os.path.join(BASE_DIR, "config.py")
+
+GITHUB_REPO = "injeharu/stream-tool"  # owner/repo
+
+EXCLUDE_DIR_NAMES = {".git", "__pycache__", ".venv", "venv"}
+EXCLUDE_FILE_NAMES = {"data.db", "data.db-wal", "data.db-shm"}
+
+
+def run(cmd, **kwargs):
+    print(f"$ {' '.join(cmd)}")
+    result = subprocess.run(cmd, cwd=BASE_DIR, **kwargs)
+    if result.returncode != 0:
+        print(f"コマンドが失敗しました(終了コード {result.returncode})。中断します。")
+        sys.exit(1)
+    return result
+
+
+def get_current_version():
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        content = f.read()
+    m = re.search(r'APP_VERSION\s*=\s*"([^"]+)"', content)
+    return m.group(1) if m else "0.0.0"
+
+
+def set_version(new_version):
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        content = f.read()
+    content = re.sub(r'(APP_VERSION\s*=\s*)"[^"]+"', rf'\1"{new_version}"', content)
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+def build_zip(version):
+    zip_name = f"stream-tool-v{version}.zip"
+    zip_path = os.path.join(BASE_DIR, zip_name)
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(BASE_DIR):
+            dirs[:] = [d for d in dirs if d not in EXCLUDE_DIR_NAMES]
+            for name in files:
+                if name in EXCLUDE_FILE_NAMES or name.startswith("stream-tool-v"):
+                    continue
+                full_path = os.path.join(root, name)
+                arcname = os.path.relpath(full_path, BASE_DIR)
+                zf.write(full_path, arcname)
+
+    print(f"配布用ZIPを作成しました: {zip_name}")
+    return zip_path
+
+
+def github_api_request(url, token, method="GET", data=None, content_type="application/json"):
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "stream-tool-release-script",
+    }
+    body = None
+    if data is not None:
+        if content_type == "application/json":
+            body = json.dumps(data).encode("utf-8")
+        else:
+            body = data
+        headers["Content-Type"] = content_type
+
+    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as res:
+            return json.loads(res.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        print(f"GitHub APIエラー: {e.code} {e.reason}")
+        print(e.read().decode("utf-8", errors="replace"))
+        sys.exit(1)
+
+
+def create_release(token, tag, notes):
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/releases"
+    data = {
+        "tag_name": tag,
+        "name": tag,
+        "body": notes,
+        "draft": False,
+        "prerelease": False,
+    }
+    return github_api_request(url, token, method="POST", data=data)
+
+
+def upload_asset(token, upload_url_template, zip_path):
+    name = os.path.basename(zip_path)
+    upload_url = upload_url_template.split("{")[0] + f"?name={name}"
+    with open(zip_path, "rb") as f:
+        content = f.read()
+    print(f"アセットをアップロード中: {name}")
+    github_api_request(upload_url, token, method="POST", data=content, content_type="application/zip")
+    print("アップロード完了。")
+
+
+def main():
+    print("=== 配信サポートツール リリース作成ツール ===\n")
+
+    current = get_current_version()
+    print(f"現在のバージョン: {current}")
+    new_version = input("新しいバージョン番号を入力してください(例: 1.1.0): ").strip()
+    if not re.match(r"^\d+\.\d+\.\d+$", new_version):
+        print("バージョン番号は 1.2.3 のような形式で入力してください。")
+        sys.exit(1)
+
+    print("\nリリースノート(更新内容)を入力してください。空行で入力終了:")
+    notes_lines = []
+    while True:
+        line = input()
+        if line == "":
+            break
+        notes_lines.append(line)
+    notes = "\n".join(notes_lines) or f"v{new_version}"
+
+    set_version(new_version)
+    print(f"\nconfig.py の APP_VERSION を {new_version} に更新しました。")
+
+    tag = f"v{new_version}"
+
+    run(["git", "add", "-A"])
+    commit_result = subprocess.run(
+        ["git", "commit", "-m", f"Release {tag}\n\n{notes}"], cwd=BASE_DIR
+    )
+    if commit_result.returncode != 0:
+        print("(変更がなかったため、コミットはスキップされました)")
+    run(["git", "push"])
+
+    zip_path = build_zip(new_version)
+
+    print("\nGitHubの個人アクセストークン(repo権限)を入力してください。")
+    print("取得方法: GitHub右上のアイコン → Settings → Developer settings → Personal access tokens")
+    print("入力内容は画面に表示されず、どこにも保存されません。")
+    token = getpass.getpass("トークン: ").strip()
+    if not token:
+        print("トークンが入力されなかったため、GitHub Releaseの作成をスキップしました。")
+        print(f"コミット・プッシュ・ZIP作成({os.path.basename(zip_path)})は完了しています。")
+        return
+
+    print(f"\nGitHub Release {tag} を作成しています...")
+    release = create_release(token, tag, notes)
+    upload_asset(token, release["upload_url"], zip_path)
+
+    print(f"\n✅ 完了しました: {release.get('html_url')}")
+    print("これで旧バージョンを使っている人の画面左下に更新ボタンが表示されます。")
+
+
+if __name__ == "__main__":
+    main()

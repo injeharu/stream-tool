@@ -22,7 +22,7 @@ def inject_status():
         "irc_status": state.get_status(),
         "available_update": state.get_available_update(),
         "app_version": config.APP_VERSION,
-        "show_tutorial": request.args.get("tutorial") == "1" or not db.is_tutorial_seen(),
+        "tutorial_seen": db.is_tutorial_seen(),
     }
 
 

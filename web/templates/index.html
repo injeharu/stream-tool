@@ -18,6 +18,7 @@
   </div>
 </div>
 
+<div id="tour-pending-area">
 {% if pending %}
 <div class="card-grid">
   {% for m in pending %}
@@ -46,5 +47,6 @@
 {% else %}
 <div class="empty-state">現在、発送待ちの項目はありません。</div>
 {% endif %}
+</div>
 
 {% endblock %}
