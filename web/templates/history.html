@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}発送履歴 - 配信サポートツール{% endblock %}
-{% block heading %}📚 発送履歴{% endblock %}
+{% block title %}特典履歴 - 配信サポートツール{% endblock %}
+{% block heading %}📚 特典履歴{% endblock %}
 {% block content %}
 
 <div class="form-row">
@@ -15,8 +15,9 @@
       <th>種別</th>
       <th>月数</th>
       <th>到達日時</th>
-      <th>発送日時</th>
+      <th>特典日時</th>
       <th>メモ</th>
+      <th style="width:130px;"></th>
     </tr>
   </thead>
   <tbody>
@@ -27,13 +28,54 @@
       <td>{{ m.threshold }}ヶ月</td>
       <td>{{ m.reached_at }}</td>
       <td>{{ m.shipped_at }}</td>
-      <td>{{ m.memo or '' }}</td>
+      <td style="white-space: pre-wrap; word-break: break-word; max-width: 320px;">{{ m.memo or '' }}</td>
+      <td>
+        <form method="post" action="{{ url_for('main.unship_milestone_route', milestone_id=m.id) }}"
+              onsubmit="return confirm('この項目を特典待ちに戻しますか?(メモは残ります)');">
+          <button type="submit" class="btn btn-ghost btn-sm">↩ 特典待ちに戻す</button>
+        </form>
+      </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 {% else %}
-<div class="empty-state">発送履歴はまだありません。</div>
+<div class="empty-state">特典履歴はまだありません。</div>
+{% endif %}
+
+{% if dismissed %}
+<div class="panel" style="margin-top:24px;">
+  <h2>対応不要にした項目</h2>
+  <p style="color:var(--text-dim); font-size:0.85rem; margin-top:-8px;">
+    間違えて消してしまった場合は「特典待ちに戻す」で復元できます。
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>視聴者</th>
+        <th>種別</th>
+        <th>月数</th>
+        <th>到達日時</th>
+        <th style="width:150px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in dismissed %}
+      <tr>
+        <td>{{ m.display_name or m.login }}</td>
+        <td><span class="badge kind-{{ m.kind }}">{{ '通算' if m.kind == 'cumulative' else '連続' }}</span></td>
+        <td>{{ m.threshold }}ヶ月</td>
+        <td>{{ m.reached_at }}</td>
+        <td>
+          <form method="post" action="{{ url_for('main.restore_milestone_route', milestone_id=m.id) }}">
+            <button type="submit" class="btn btn-success btn-sm">特典待ちに戻す</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endif %}
 
 {% endblock %}

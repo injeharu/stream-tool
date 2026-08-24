@@ -22,9 +22,11 @@ import config  # GITHUB_REPO を共有(リポジトリ名の二重管理を避�
 
 GITHUB_REPO = config.GITHUB_REPO
 
-EXCLUDE_DIR_NAMES = {".git", "__pycache__", ".venv", "venv"}
+EXCLUDE_DIR_NAMES = {".git", "__pycache__", ".venv", "venv", "backups"}
 # github_token.txt は絶対に配布ZIPへ入れない(トークン流出防止)
 EXCLUDE_FILE_NAMES = {"data.db", "data.db-wal", "data.db-shm", "github_token.txt"}
+# 視聴者データのバックアップ(.bak)等も同梱しない(プライバシー保護)
+EXCLUDE_SUFFIXES = (".db", ".db.bak", ".bak")
 
 
 def run(cmd, **kwargs):
@@ -62,6 +64,8 @@ def build_zip(version):
             dirs[:] = [d for d in dirs if d not in EXCLUDE_DIR_NAMES]
             for name in files:
                 if name in EXCLUDE_FILE_NAMES or name.startswith("stream-tool-v"):
+                    continue
+                if name.endswith(EXCLUDE_SUFFIXES):
                     continue
                 full_path = os.path.join(root, name)
                 arcname = os.path.relpath(full_path, BASE_DIR)
@@ -164,7 +168,8 @@ def main():
 
     tag = f"v{new_version}"
 
-    run(["git", "add", "-A"])
+    # 改行コードの警告が大量に出て読みにくいため抑制する
+    run(["git", "add", "-A"], stderr=subprocess.DEVNULL)
     commit_result = subprocess.run(
         ["git", "commit", "-m", f"Release {tag}\n\n{notes}"], cwd=BASE_DIR
     )

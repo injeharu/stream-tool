@@ -47,7 +47,7 @@ def replay(path, notify=True):
         processed += 1
 
     print(f"\n{processed}行を処理しました。")
-    print(f"発送待ち件数: {db.count_pending_milestones()}")
+    print(f"特典待ち件数: {db.count_pending_milestones()}")
 
 
 if __name__ == "__main__":

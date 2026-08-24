@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ランキングオーバーレイ</title>
+<style>
+  /* OBSブラウザソース用: 背景透過・自動更新 */
+  body {
+    margin: 0;
+    background: transparent;
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    color: #fff;
+  }
+  .board {
+    width: 320px;
+    background: rgba(15, 14, 23, 0.82);
+    border: 2px solid #9146ff;
+    border-radius: 14px;
+    padding: 14px 18px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+  }
+  .board h1 {
+    font-size: 1.0rem;
+    margin: 0 0 10px;
+    color: #a970ff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+  ol { margin: 0; padding: 0; list-style: none; }
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 0.95rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  }
+  .rank { width: 28px; text-align: center; font-weight: 700; }
+  .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .value { font-weight: 700; color: #ffb84d; }
+</style>
+</head>
+<body>
+<div class="board">
+  <h1 id="title">🏆 ランキング</h1>
+  <ol id="list"></ol>
+</div>
+<script>
+  var TAB = {{ tab | tojson }};
+  var PERIOD = {{ period | tojson }};
+  var MEDALS = ["🥇", "🥈", "🥉"];
+
+  function refresh() {
+    fetch("/api/overlay/ranking?tab=" + TAB + "&period=" + PERIOD)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        document.getElementById("title").textContent = "🏆 " + data.title + "ランキング";
+        var list = document.getElementById("list");
+        list.innerHTML = "";
+        data.rows.forEach(function (row, i) {
+          var li = document.createElement("li");
+          var rank = document.createElement("span");
+          rank.className = "rank";
+          rank.textContent = MEDALS[i] || (i + 1);
+          var name = document.createElement("span");
+          name.className = "name";
+          name.textContent = row.name;
+          var value = document.createElement("span");
+          value.className = "value";
+          value.textContent = row.value;
+          li.appendChild(rank);
+          li.appendChild(name);
+          li.appendChild(value);
+          list.appendChild(li);
+        });
+      })
+      .catch(function () {});
+  }
+
+  refresh();
+  setInterval(refresh, 10000);
+</script>
+</body>
+</html>

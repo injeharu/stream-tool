@@ -20,12 +20,46 @@
       <input type="number" name="cumulative_months" class="num-sm" min="0">
       <label>連続月数</label>
       <input type="number" name="streak_months" class="num-sm" min="0">
+      <label>ティア</label>
+      <select name="tier">
+        <option value="">未設定</option>
+        {% for t, label in tier_labels.items() %}
+        <option value="{{ t }}">{{ label }}</option>
+        {% endfor %}
+      </select>
       <button type="submit" class="btn btn-primary" style="width:auto;">保存</button>
     </div>
   </form>
 </div>
 
+<div class="form-row">
+  <a href="{{ url_for('main.subscribers_csv') }}" class="btn btn-primary" style="width:auto; text-decoration:none; display:inline-block;">⬇ CSVエクスポート</a>
+</div>
+
+{% macro pager() %}
+{% if total_pages > 1 %}
+<div class="form-row" style="margin: 10px 0; flex-wrap: wrap;">
+  {% if page > 1 %}
+  <a href="{{ url_for('main.subscribers', page=page-1) }}" class="btn btn-ghost btn-sm">← 前へ</a>
+  {% endif %}
+  {% for p in page_window %}
+    {% if p is none %}
+    <span style="color:var(--text-dim); padding:0 4px;">…</span>
+    {% elif p == page %}
+    <span class="btn btn-primary btn-sm" style="cursor:default;">{{ p }}</span>
+    {% else %}
+    <a href="{{ url_for('main.subscribers', page=p) }}" class="btn btn-ghost btn-sm">{{ p }}</a>
+    {% endif %}
+  {% endfor %}
+  {% if page < total_pages %}
+  <a href="{{ url_for('main.subscribers', page=page+1) }}" class="btn btn-ghost btn-sm">次へ →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
 {% if rows %}
+{{ pager() }}
 <table>
   <thead>
     <tr>
@@ -33,23 +67,36 @@
       <th>通算月数</th>
       <th>連続月数</th>
       <th>ティア</th>
-      <th>情報源</th>
       <th>更新日時</th>
+      <th style="width:100px;">操作</th>
     </tr>
   </thead>
   <tbody>
     {% for r in rows %}
     <tr>
-      <td>{{ r.display_name or r.login }}</td>
+      <td>{{ r.display_name or r.login }}
+        <span style="color:var(--text-dim); font-size:0.75rem;">@{{ r.login }}</span>
+      </td>
       <td>{{ r.cumulative_months if r.cumulative_months is not none else '-' }}</td>
       <td>{{ r.streak_months if r.streak_months is not none else '-' }}</td>
       <td>{% if r.tier %}<span class="tier-badge">{{ tier_labels.get(r.tier, r.tier) }}</span>{% else %}-{% endif %}</td>
-      <td>{{ '💬 チャット' if r.source == 'chat' else '✍ 手入力' }}</td>
       <td>{{ r.updated_at or '-' }}</td>
+      <td>
+        <form method="post" action="{{ url_for('main.rename_viewer', login=r.login) }}" style="display:inline;"
+              onsubmit="var n = prompt('新しい表示名を入力してください', '{{ (r.display_name or r.login)|e }}'); if (!n) return false; this.display_name.value = n; return true;">
+          <input type="hidden" name="display_name">
+          <button type="submit" class="btn btn-ghost btn-sm" title="表示名を変更">✏</button>
+        </form>
+        <form method="post" action="{{ url_for('main.delete_viewer', login=r.login) }}" style="display:inline;"
+              onsubmit="return confirm('{{ (r.display_name or r.login)|e }} さんの記録を削除しますか?\n(特典履歴は残ります。再度チャットに現れたら新規として記録されます)');">
+          <button type="submit" class="btn btn-ghost btn-sm" title="記録を削除">🗑</button>
+        </form>
+      </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+{{ pager() }}
 {% else %}
 <div class="empty-state">まだサブスク情報がありません。</div>
 {% endif %}

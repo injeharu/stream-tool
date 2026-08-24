@@ -32,3 +32,17 @@ def set_available_update(info):
 def get_available_update():
     with _update_lock:
         return _available_update
+
+
+# ---------- IRCクライアント参照(設定画面からのチャンネル即時切り替え用) ----------
+
+_irc_client = None
+
+
+def set_irc_client(client):
+    global _irc_client
+    _irc_client = client
+
+
+def get_irc_client():
+    return _irc_client

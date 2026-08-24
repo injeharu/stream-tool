@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}発送待ち - 配信サポートツール{% endblock %}
-{% block heading %}📦 発送待ち{% endblock %}
+{% block title %}特典待ち - 配信サポートツール{% endblock %}
+{% block heading %}📦 特典待ち{% endblock %}
 {% block content %}
 
 <div class="tiles">
   <div class="tile">
-    <div class="tile-value">{{ tiles.pending_count }}</div>
-    <div class="tile-label">発送待ち件数</div>
+    <div class="tile-value">{{ tiles.pending_people }}<span style="font-size:1rem; color:var(--text-dim);">人 / {{ tiles.pending_count }}件</span></div>
+    <div class="tile-label">特典待ち</div>
   </div>
   <div class="tile">
     <div class="tile-value">{{ tiles.reached_this_month }}</div>
@@ -18,35 +18,58 @@
   </div>
 </div>
 
+{% if thresholds|length > 1 %}
+<div class="form-row" style="margin-bottom:16px;">
+  <label>絞り込み</label>
+  <a href="{{ url_for('main.index') }}"
+     class="btn btn-sm {{ 'btn-primary' if selected_threshold is none else 'btn-ghost' }}">すべて</a>
+  {% for t in thresholds %}
+  <a href="{{ url_for('main.index', threshold=t) }}"
+     class="btn btn-sm {{ 'btn-primary' if selected_threshold == t else 'btn-ghost' }}">{{ t }}ヶ月</a>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div id="tour-pending-area">
-{% if pending %}
+{% if groups %}
 <div class="card-grid">
-  {% for m in pending %}
+  {% for g in groups %}
   <div class="card">
-    <div class="card-name">{{ m.display_name or m.login }}</div>
-    <div class="card-meta">
+    <div class="card-name">{{ g.display_name or g.login }}
+      <span style="color:var(--text-dim); font-size:0.75rem; font-weight:400;">@{{ g.login }}</span>
+    </div>
+    {% for m in g["items"] %}
+    <div class="milestone-row">
       <span class="badge kind-{{ m.kind }}">{{ '通算' if m.kind == 'cumulative' else '連続' }}</span>
       <span class="badge milestone-{{ m.threshold if m.threshold in [6,12,24] else 'default' }}">{{ m.threshold }}ヶ月</span>
-      <br>達成日: {{ m.reached_at }}
-    </div>
-    <div class="card-actions">
-      <form method="post" action="{{ url_for('main.ship_milestone', milestone_id=m.id) }}">
-        <input type="text" name="memo" placeholder="発送メモ(任意)" style="width:100%; margin-bottom:6px;">
-        <button type="submit" class="btn btn-success">✅ 発送済みにする</button>
+      <div style="flex:1;"></div>
+      <form method="post" action="{{ url_for('main.ship_milestone', milestone_id=m.id) }}"
+            onsubmit="this.memo.value = document.getElementById('memo-{{ g.login }}').value;">
+        <input type="hidden" name="memo">
+        <button type="submit" class="btn btn-success btn-sm" title="下のメモを付けて特典済みにする">✅ 特典済み</button>
       </form>
-    </div>
-    <div class="card-actions">
       <form method="post" action="{{ url_for('main.dismiss_milestone_route', milestone_id=m.id) }}"
-            onsubmit="return confirm('この項目を対応不要として一覧から消しますか?');">
-        <button type="submit" class="btn btn-ghost btn-sm">対応不要にする</button>
+            onsubmit="return confirm('{{ m.threshold }}ヶ月の項目を対応不要にしますか?(特典履歴の画面から戻せます)');">
+        <button type="submit" class="btn btn-ghost btn-sm" title="対応不要にする">🗑</button>
       </form>
+    </div>
+    {% endfor %}
+
+    <textarea id="memo-{{ g.login }}" class="card-memo" rows="2"
+              placeholder="メモ(「✅ 特典済み」を押すと記録されます)"></textarea>
+
+    <div style="color:var(--text-dim); font-size:0.75rem; margin-top:6px;">
+      到達日: {{ g["items"][-1].reached_at }}
     </div>
   </div>
   {% endfor %}
 </div>
 {% else %}
-<div class="empty-state">現在、発送待ちの項目はありません。</div>
+<div class="empty-state">現在、特典待ちの項目はありません。</div>
 {% endif %}
 </div>
 
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='autorefresh.js') }}" defer></script>
 {% endblock %}

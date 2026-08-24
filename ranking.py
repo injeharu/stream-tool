@@ -38,19 +38,20 @@ def _get_keyword_cache():
 
 def process_privmsg(parsed):
     login = parsed.login
-    if not login:
+    channel = parsed.channel
+    if not login or not channel:
         return
 
     now = _now()
 
-    db.record_message_daily(login, now)
+    db.record_message_daily(channel, login, now)
 
     text_lower = (parsed.text or "").lower()
     if text_lower:
         for keyword_id, label, patterns in _get_keyword_cache():
             if any(p in text_lower for p in patterns):
-                db.record_keyword_hit(keyword_id, login, now)
+                db.record_keyword_hit(channel, keyword_id, login, now)
 
     bits_raw = parsed.tags.get("bits")
     if bits_raw and bits_raw.isdigit():
-        db.record_bits(login, int(bits_raw), now)
+        db.record_bits(channel, login, int(bits_raw), now)

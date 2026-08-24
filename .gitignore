@@ -3,5 +3,8 @@ __pycache__/
 data.db
 data.db-wal
 data.db-shm
+data.db.bak
+*.db.bak
+backups/
 github_token.txt
 stream-tool-v*.zip

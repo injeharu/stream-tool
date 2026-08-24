@@ -8,10 +8,14 @@
 <script src="{{ url_for('static', filename='tutorial.js') }}" defer></script>
 </head>
 <body data-tutorial-autoshow="{{ '0' if tutorial_seen else '1' }}">
+<script>
+  // 描画前にテーマを適用してライトモード利用時のチラつき(一瞬暗くなる)を防ぐ
+  if (localStorage.getItem("stream-tool-theme") === "light") { document.body.classList.add("light"); }
+</script>
 <div class="sidebar">
-  <div class="brand">🎁 発送台帳</div>
-  <a data-tour="nav-index" href="{{ url_for('main.index') }}" class="{{ 'active' if active == 'index' }}">📦 発送待ち</a>
-  <a data-tour="nav-history" href="{{ url_for('main.history') }}" class="{{ 'active' if active == 'history' }}">📚 発送履歴</a>
+  <div class="brand">🎁 特典台帳</div>
+  <a data-tour="nav-index" href="{{ url_for('main.index') }}" class="{{ 'active' if active == 'index' }}">📦 特典待ち</a>
+  <a data-tour="nav-history" href="{{ url_for('main.history') }}" class="{{ 'active' if active == 'history' }}">📚 特典履歴</a>
   <a data-tour="nav-subscribers" href="{{ url_for('main.subscribers') }}" class="{{ 'active' if active == 'subscribers' }}">👥 サブスク一覧</a>
   <a data-tour="nav-forecast" href="{{ url_for('main.forecast') }}" class="{{ 'active' if active == 'forecast' }}">🔮 到達予定</a>
   <a data-tour="nav-ranking" href="{{ url_for('main.ranking_page') }}" class="{{ 'active' if active == 'ranking' }}">🏆 ランキング</a>
@@ -30,12 +34,14 @@
     <div class="right">
       <span class="status-badge">
         {% if irc_status == 'connected' %}
-          <span class="status-dot connected"></span> 接続中
+          <span class="status-dot connected"></span>
         {% elif irc_status == 'connecting' %}
-          <span class="status-dot connecting"></span> 再接続中
+          <span class="status-dot connecting"></span>
         {% else %}
-          <span class="status-dot disconnected"></span> 切断中
+          <span class="status-dot disconnected"></span>
         {% endif %}
+        {% if current_channel %}<b>#{{ current_channel }}</b>&nbsp;{% endif %}
+        {%- if irc_status == 'connected' %}接続中{% elif irc_status == 'connecting' %}再接続中{% else %}切断中{% endif %}
       </span>
       <button class="theme-toggle" onclick="toggleTheme()">🌗 テーマ切替</button>
     </div>
@@ -48,5 +54,6 @@
   </div>
 </div>
 
+{% block scripts %}{% endblock %}
 </body>
 </html>

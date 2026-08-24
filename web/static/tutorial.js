@@ -6,7 +6,7 @@
       title: "ようこそ",
       body:
         "このツールは、Twitchのチャットを見張って「サブスク月数の節目(6ヶ月・12ヶ月など)に届いた視聴者」を自動で見つけ、" +
-        "グッズ発送の管理を手伝うツールです。実際の画面を見ながら、ひとつずつ操作してみましょう。",
+        "特典の管理を手伝うツールです。実際の画面を見ながら、ひとつずつ操作してみましょう。",
       advance: "next",
     },
     {
@@ -27,16 +27,16 @@
       page: null,
       selector: '[data-tour="nav-index"]',
       title: "② このタブを押してみましょう",
-      body: "「📦 発送待ち」をクリックしてください。",
+      body: "「📦 特典待ち」をクリックしてください。",
       advance: "click",
     },
     {
       page: "/",
       selector: "#tour-pending-area",
-      title: "発送待ちの操作",
+      title: "特典待ちの操作",
       body:
         "視聴者が節目の月数に届くと、ここにカードが自動で増えます。" +
-        "グッズを送ったら「発送済みにする」、送らないと決めたら「対応不要にする」を押してください。",
+        "特典を渡したら「特典済みにする」、対応しないと決めたら「対応不要にする」を押してください。",
       advance: "next",
     },
     {
@@ -66,8 +66,18 @@
       page: "/ranking",
       selector: "#tour-ranking-tabs",
       title: "ランキングの見方",
-      body: "コメント数・キーワード・ビッツ(応援ポイント)の3種類を切り替えて見られます。キーワードは「⚙ 設定」から登録できます。",
+      body: "コメント数・キーワード・ビッツ(応援ポイント)・ギフトの4種類を切り替えて見られます。キーワードは「⚙ 設定」から登録できます。",
       advance: "next",
+    },
+    {
+      page: null,
+      selector: null,
+      title: "自動起動のすすめ",
+      body:
+        "このツールは起動していない間のサブスクやコメントを記録できません。つまり起動し忘れ=特典の取りこぼしに直結します。" +
+        "「自動起動をONにする」を押しておくと、パソコンにサインインするだけで自動で立ち上がるので、消し忘れ・付け忘れの心配がなくなります(あとから設定画面で変更できます)。",
+      advance: "next",
+      autostartOffer: true,
     },
     {
       page: null,
@@ -75,7 +85,6 @@
       title: "知っておいてほしいこと",
       body:
         "視聴者が「共有しない」を選んで再サブスクすると自動では取得できません。過去のデータも遡れません。" +
-        "配信を始める前にこのツールを起動しておく運用がおすすめです。「⚙ 設定」の自動起動をONにすると、PC起動時に自動で立ち上がります。" +
         "お疲れさまでした、これでチュートリアルは終わりです!",
       advance: "finish",
     },
@@ -142,6 +151,24 @@
   }
 
   function buildCardButtons(container, i, step) {
+    if (step.autostartOffer) {
+      var offer = document.createElement("div");
+      offer.style.cssText = "margin: 4px 0 10px;";
+      var onBtn = document.createElement("button");
+      onBtn.className = "btn btn-primary btn-sm";
+      onBtn.textContent = "🖥 自動起動をONにする";
+      onBtn.onclick = function () {
+        fetch("/autostart/enable", { method: "POST" })
+          .then(function () {
+            onBtn.textContent = "✅ 自動起動をONにしました";
+            onBtn.disabled = true;
+          })
+          .catch(function () {});
+      };
+      offer.appendChild(onBtn);
+      container.appendChild(offer);
+    }
+
     var actions = document.createElement("div");
     actions.className = "tutorial-actions";
 

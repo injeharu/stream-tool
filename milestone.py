@@ -19,7 +19,8 @@ def handle_usernotice(parsed, notify=True):
         return
 
     login = parsed.login
-    if not login:
+    channel = parsed.channel
+    if not login or not channel:
         return
     display_name = parsed.tags.get("display-name", login)
 
@@ -34,13 +35,13 @@ def handle_usernotice(parsed, notify=True):
 
     now = _now()
 
-    db.upsert_viewer(login, display_name)
-    db.record_sub_event(login, msg_id, cumulative, streak, tier, now)
+    db.upsert_viewer(channel, login, display_name)
+    db.record_sub_event(channel, login, msg_id, cumulative, streak, tier, now)
 
     # 通算/連続月数が確定するのは本人の sub / resub イベントのみ
-    # (subgiftは贈り主のイベントであり、受け取り側の月数はこのタグに入らない)
     if msg_id in ("sub", "resub") and cumulative is not None:
         db.upsert_sub_state(
+            channel,
             login,
             display_name,
             cumulative_months=cumulative,
@@ -49,11 +50,44 @@ def handle_usernotice(parsed, notify=True):
             source="chat",
             updated_at=now,
         )
-        check_milestones(login, cumulative, streak, now, tier=tier, notify=notify)
+        _check_with_mode(channel, login, cumulative, streak, now, tier, notify)
+
+    # ギフトサブ: 贈り主をランキング用にカウントし、受け取り主もサブスクとして記録する
+    # (submysterygiftは「◯個贈った」という予告で、直後に個別のsubgiftがその数だけ流れるため
+    #  二重カウントを避けて subgift のみを数える)
+    if msg_id == "subgift":
+        db.record_gift(channel, login, 1, now)
+
+        recipient = (parsed.tags.get("msg-param-recipient-user-name") or "").lower()
+        if recipient:
+            recipient_display = parsed.tags.get("msg-param-recipient-display-name", recipient)
+            months_raw = parsed.tags.get("msg-param-months")
+            months = int(months_raw) if months_raw and months_raw.isdigit() else None
+            db.upsert_viewer(channel, recipient, recipient_display)
+            if months is not None:
+                db.upsert_sub_state(
+                    channel,
+                    recipient,
+                    recipient_display,
+                    cumulative_months=months,
+                    streak_months=None,
+                    tier=tier,
+                    source="chat",
+                    updated_at=now,
+                )
+                _check_with_mode(channel, recipient, months, None, now, tier, notify)
 
 
-def check_milestones(login, cumulative_months, streak_months, reached_at, tier=None, notify=True):
-    # 発送対象ティアの設定に含まれない人は、月数は記録するが発送待ちには載せない
+def _check_with_mode(channel, login, cumulative_months, streak_months, reached_at, tier, notify):
+    """数え方モード(通算そのもの/導入時からの増加分)を反映して閾値判定する。"""
+    row = db.get_sub_state(channel, login)
+    base = row["base_months"] if row else None
+    effective = db.effective_cumulative(cumulative_months, base)
+    check_milestones(channel, login, effective, streak_months, reached_at, tier=tier, notify=notify)
+
+
+def check_milestones(channel, login, cumulative_months, streak_months, reached_at, tier=None, notify=True):
+    # 特典対象ティアの設定に含まれない人は、月数は記録するが特典待ちには載せない
     if not db.is_tier_eligible(tier):
         return
 
@@ -64,7 +98,7 @@ def check_milestones(login, cumulative_months, streak_months, reached_at, tier=N
             continue
         newly_added = []
         for threshold in db.thresholds_up_to(kind, months):
-            if db.try_add_milestone(login, kind, threshold, reached_at):
+            if db.try_add_milestone(channel, login, kind, threshold, reached_at):
                 newly_added.append(threshold)
         # 導入時に大量の過去分が一気に閾値到達しても、通知は最高到達の1件だけに絞る
         if newly_added and should_notify:
@@ -72,11 +106,13 @@ def check_milestones(login, cumulative_months, streak_months, reached_at, tier=N
 
 
 def handle_manual_update(login, display_name, cumulative_months, streak_months, tier=None):
-    """配信者が手入力した月数を反映する。通知は出さない(自分の入力に反応させないため)。"""
+    """配信者が手入力した月数を反映する。現在設定されているチャンネルに対して適用し、通知は出さない。"""
     now = _now()
     login = login.lower().strip()
-    db.upsert_viewer(login, display_name)
+    channel = db.current_channel()
+    db.upsert_viewer(channel, login, display_name)
     db.upsert_sub_state(
+        channel,
         login,
         display_name,
         cumulative_months=cumulative_months,
@@ -85,13 +121,14 @@ def handle_manual_update(login, display_name, cumulative_months, streak_months, 
         source="manual",
         updated_at=now,
     )
-    check_milestones(login, cumulative_months, streak_months, now, tier=tier, notify=False)
+    _check_with_mode(channel, login, cumulative_months, streak_months, now, tier, False)
 
 
 def handle_privmsg(parsed):
     login = parsed.login
-    if not login:
+    channel = parsed.channel
+    if not login or not channel:
         return
     display_name = parsed.tags.get("display-name", login)
-    db.upsert_viewer(login, display_name, seen_message=True)
+    db.upsert_viewer(channel, login, display_name, seen_message=True)
     ranking.process_privmsg(parsed)

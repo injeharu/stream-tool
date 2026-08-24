@@ -18,101 +18,118 @@
 </div>
 {% endif %}
 
+<form method="post" action="{{ url_for('main.settings') }}">
+
 <div class="panel">
-  <h2>基本設定</h2>
-  <form method="post" action="{{ url_for('main.settings') }}">
-    <div class="form-row">
-      <label>チャンネル名</label>
-      <input id="tour-channel-input" type="text" name="channel_name" value="{{ channel_name }}" placeholder="例: your_channel">
-    </div>
-    <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-8px;">
-      あなたのTwitchのユーザー名(配信URLの一部)を入力してください。これだけで動きます。
-      変更した場合は、反映のためツールの再起動が必要です。
-    </p>
-
-    <div class="form-row">
-      <label>判定対象</label>
-      <label style="display:inline-flex; align-items:center; gap:4px; margin-right:14px; color:var(--text);">
-        <input type="checkbox" name="kind_cumulative" {% if kind_cumulative %}checked{% endif %}>
-        通算月数
-      </label>
-      <label style="display:inline-flex; align-items:center; gap:4px; color:var(--text);">
-        <input type="checkbox" name="kind_streak" {% if kind_streak %}checked{% endif %}>
-        連続月数
-      </label>
-    </div>
-    <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-8px;">
-      「通算」は今までの合計サブスク月数、「連続」は途切れずに続けている月数です。
-      チェックを外した種別は、発送待ち・通知・到達予定のすべてで使われなくなります(記録は消えず、戻すと再表示されます)。
-    </p>
-
-    <div class="form-row">
-      <label>通算月数の閾値</label>
-      <input type="text" name="cumulative_thresholds" value="{{ cumulative_thresholds }}" placeholder="例: 6,12,24">
-    </div>
-    <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-8px;">
-      この月数に届いた視聴者が、自動で「発送待ち」リストに追加されます。カンマ区切りで何個でも指定できます。
-    </p>
-    <div class="form-row">
-      <label>通算・繰り返し間隔</label>
-      <input type="number" name="cumulative_interval" class="num-sm" min="1" value="{{ cumulative_interval }}" placeholder="空欄=なし">
-      <span style="font-size:0.85rem; color:var(--text-dim);">例えば6を入れると、6,12,18,24…と上限なく繰り返し届いた扱いになります(空欄なら繰り返しなし)</span>
-    </div>
-    <div class="form-row">
-      <label>連続月数の閾値</label>
-      <input type="text" name="streak_thresholds" value="{{ streak_thresholds }}" placeholder="例: 6,12,24">
-    </div>
-    <div class="form-row">
-      <label>連続・繰り返し間隔</label>
-      <input type="number" name="streak_interval" class="num-sm" min="1" value="{{ streak_interval }}" placeholder="空欄=なし">
-      <span style="font-size:0.85rem; color:var(--text-dim);">連続月数版の繰り返し設定です</span>
-    </div>
-
-    <div class="form-row">
-      <label>デスクトップ通知</label>
-      <input type="checkbox" name="notify_enabled" {% if notify_enabled %}checked{% endif %}>
-      <span style="font-size:0.85rem; color:var(--text-dim);">節目の月数に届いたら、Windowsの画面右下に通知を出します</span>
-    </div>
-
-    <div class="form-row">
-      <label>PC起動時に自動起動</label>
-      {% if autostart_available %}
-      <input type="checkbox" name="autostart_enabled" {% if autostart_enabled %}checked{% endif %}>
-      <span style="font-size:0.85rem; color:var(--text-dim);">ONにすると、パソコンにサインインしたときに自動でこのツールが立ち上がります(起動し忘れ防止)</span>
-      {% else %}
-      <span style="font-size:0.85rem; color:var(--text-dim);">この環境では利用できません(Windows専用の機能です)</span>
-      {% endif %}
-    </div>
-
-    <div class="form-row">
-      <label>更新の自動確認</label>
-      {% if update_check_configured %}
-      <input type="checkbox" name="update_check_enabled" {% if update_check_enabled %}checked{% endif %}>
-      <span style="font-size:0.85rem; color:var(--text-dim);">新しいバージョンが公開されたら、左下にお知らせを表示します</span>
-      {% else %}
-      <span style="font-size:0.85rem; color:var(--text-dim);">現在このツールでは利用できません(配布準備中の機能です)</span>
-      {% endif %}
-    </div>
-
-    <div class="form-row" style="align-items:flex-start;">
-      <label>発送対象ティア</label>
-      <div>
-        {% for t in all_tiers %}
-        <label style="display:inline-flex; align-items:center; gap:4px; margin-right:14px; color:var(--text);">
-          <input type="checkbox" name="eligible_tiers" value="{{ t }}" {% if t in eligible_tiers %}checked{% endif %}>
-          {{ tier_labels[t] }}
-        </label>
-        {% endfor %}
-        <p style="color:var(--text-dim); font-size:0.82rem; margin:6px 0 0;">
-          サブスクの種類(ティア)ごとに、グッズ発送の対象にするかを選べます。Tier 3が一番高額な応援です。
-          チェックを外したティアの人は発送待ちリストに表示されなくなります(記録は残り、チェックを戻すと再表示されます)。
-        </p>
-      </div>
-    </div>
-
-    <button type="submit" class="btn btn-primary" style="width:auto;">保存</button>
-  </form>
+  <h2>📡 基本設定</h2>
+  <div class="form-row">
+    <label>チャンネル名</label>
+    <input id="tour-channel-input" type="text" name="channel_name" value="{{ channel_name }}" placeholder="例: your_channel">
+  </div>
+  <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-8px;">
+    あなたのTwitchのユーザー名を入力してください(チャンネルのURLをそのまま貼ってもOK)。これだけで動きます。
+    保存すると再起動なしで切り替わり、各画面もそのチャンネル専用のデータに切り替わります。
+  </p>
 </div>
+
+<div class="panel">
+  <h2>🎁 特典の条件</h2>
+
+  <div class="form-row">
+    <label>判定対象</label>
+    <label style="display:inline-flex; align-items:center; gap:4px; margin-right:14px; color:var(--text);">
+      <input type="checkbox" name="kind_cumulative" {% if kind_cumulative %}checked{% endif %}>
+      通算月数
+    </label>
+    <label style="display:inline-flex; align-items:center; gap:4px; color:var(--text);">
+      <input type="checkbox" name="kind_streak" {% if kind_streak %}checked{% endif %}>
+      連続月数
+    </label>
+    <span style="font-size:0.82rem; color:var(--text-dim);">「通算」=合計サブスク月数、「連続」=途切れず続いている月数</span>
+  </div>
+
+  <div class="form-row" style="align-items:flex-start;">
+    <label>月数の数え方</label>
+    <div>
+      <label style="display:block; margin-bottom:4px; color:var(--text);">
+        <input type="radio" name="count_mode" value="absolute" {% if count_mode == 'absolute' %}checked{% endif %}>
+        通算そのまま(通算6ヶ月ちょうどで到達扱い)
+      </label>
+      <label style="display:block; color:var(--text);">
+        <input type="radio" name="count_mode" value="since_install" {% if count_mode == 'since_install' %}checked{% endif %}>
+        今日から数える(切り替えた時点を0として、そこから+6ヶ月で到達扱い)
+      </label>
+      <p style="color:var(--text-dim); font-size:0.82rem; margin:6px 0 0;">
+        「今日から特典を始めます!」という場合は下を選んでください。長期サブスクの人に過去の節目分がまとめて積まれるのを防げます。
+      </p>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <label>通算月数の閾値</label>
+    <input type="text" name="cumulative_thresholds" value="{{ cumulative_thresholds }}" placeholder="例: 6,12,24">
+    <span style="font-size:0.82rem; color:var(--text-dim);">この月数に届いた人が特典待ちに載ります(カンマ区切り)</span>
+  </div>
+  <div class="form-row">
+    <label>通算・繰り返し間隔</label>
+    <input type="number" name="cumulative_interval" class="num-sm" min="1" value="{{ cumulative_interval }}" placeholder="空欄=なし">
+    <span style="font-size:0.82rem; color:var(--text-dim);">6なら 6,12,18,24…と上限なく繰り返します(空欄=なし)</span>
+  </div>
+  <div class="form-row">
+    <label>連続月数の閾値</label>
+    <input type="text" name="streak_thresholds" value="{{ streak_thresholds }}" placeholder="例: 6,12,24">
+  </div>
+  <div class="form-row">
+    <label>連続・繰り返し間隔</label>
+    <input type="number" name="streak_interval" class="num-sm" min="1" value="{{ streak_interval }}" placeholder="空欄=なし">
+  </div>
+
+  <div class="form-row" style="align-items:flex-start;">
+    <label>対象ティア</label>
+    <div>
+      {% for t in all_tiers %}
+      <label style="display:inline-flex; align-items:center; gap:4px; margin-right:14px; color:var(--text);">
+        <input type="checkbox" name="eligible_tiers" value="{{ t }}" {% if t in eligible_tiers %}checked{% endif %}>
+        {{ tier_labels[t] }}
+      </label>
+      {% endfor %}
+      <p style="color:var(--text-dim); font-size:0.82rem; margin:6px 0 0;">
+        チェックを外したティアの人は特典待ちに載りません(記録は残り、戻すと再表示されます)。Tier 3が一番高額な応援です。
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>🔔 通知と動作</h2>
+  <div class="form-row">
+    <label>デスクトップ通知</label>
+    <input type="checkbox" name="notify_enabled" {% if notify_enabled %}checked{% endif %}>
+    <span style="font-size:0.85rem; color:var(--text-dim);">節目到達をWindowsの通知でお知らせ(クリックで管理画面が開きます)</span>
+  </div>
+  <div class="form-row">
+    <label>PC起動時に自動起動</label>
+    {% if autostart_available %}
+    <input type="checkbox" name="autostart_enabled" {% if autostart_enabled %}checked{% endif %}>
+    <span style="font-size:0.85rem; color:var(--text-dim);">サインイン時に自動で立ち上げて、起動し忘れによる記録漏れを防ぎます</span>
+    {% else %}
+    <span style="font-size:0.85rem; color:var(--text-dim);">この環境では利用できません(Windows専用の機能です)</span>
+    {% endif %}
+  </div>
+  <div class="form-row">
+    <label>更新の自動確認</label>
+    {% if update_check_configured %}
+    <input type="checkbox" name="update_check_enabled" {% if update_check_enabled %}checked{% endif %}>
+    <span style="font-size:0.85rem; color:var(--text-dim);">新バージョン公開時に左下でお知らせします</span>
+    {% else %}
+    <span style="font-size:0.85rem; color:var(--text-dim);">現在このツールでは利用できません(配布準備中の機能です)</span>
+    {% endif %}
+  </div>
+
+  <button type="submit" class="btn btn-primary" style="width:auto; margin-top:8px;">💾 設定を保存</button>
+</div>
+
+</form>
 
 <div class="panel">
   <h2>キーワードランキングの登録キーワード</h2>
@@ -152,6 +169,32 @@
   {% else %}
   <p style="color:var(--text-dim); font-size:0.85rem;">まだキーワードが登録されていません。</p>
   {% endif %}
+</div>
+
+<div class="panel">
+  <h2>OBS連携(オーバーレイ)</h2>
+  <p style="color:var(--text-dim); font-size:0.85rem; margin-top:-8px;">
+    以下のURLをOBSの「ブラウザ」ソースに貼ると、配信画面にランキングや到達祝福を表示できます。
+  </p>
+  <table>
+    <thead>
+      <tr><th>内容</th><th>URL(コピーして使ってください)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>🏆 ランキング表示<br><span style="color:var(--text-dim); font-size:0.78rem;">幅340・高さ420推奨</span></td>
+        <td><code>http://127.0.0.1:8712/overlay/ranking?tab=message&period=week</code><br>
+          <span style="color:var(--text-dim); font-size:0.78rem;">tab= message / keyword / bits / gift、period= all / month / week で切替</span>
+        </td>
+      </tr>
+      <tr>
+        <td>🎉 節目到達の祝福バナー<br><span style="color:var(--text-dim); font-size:0.78rem;">幅520・高さ120推奨</span></td>
+        <td><code>http://127.0.0.1:8712/overlay/alert</code><br>
+          <span style="color:var(--text-dim); font-size:0.78rem;">誰かが節目に到達した瞬間だけ8秒間表示されます</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
 <div class="panel">

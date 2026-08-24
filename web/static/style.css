@@ -317,7 +317,8 @@ body {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  /* 1枚の中に「種別・月数・メモ・操作」を1行で収めるため最小幅を確保する */
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
   gap: 14px;
 }
 
@@ -351,6 +352,41 @@ body {
   flex: 1;
 }
 
+/* 特典待ちカード内の1行(節目ごと) */
+.milestone-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+
+.milestone-row form {
+  flex-shrink: 0;
+}
+
+/* カード下部の共通メモ(長文対応) */
+.card-memo {
+  width: 100%;
+  margin-top: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;   /* 長文のときは自分で縦に広げられる */
+  min-height: 48px;
+  box-sizing: border-box;
+}
+
+.card-memo:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* ---------- バッジ ---------- */
 
 .badge {
@@ -361,6 +397,8 @@ body {
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 700;
+  white-space: nowrap;  /* 「6ヶ月」が縦に折り返されるのを防ぐ */
+  flex-shrink: 0;
 }
 
 .badge.kind-cumulative { background: var(--accent-soft); color: var(--accent-bright); }

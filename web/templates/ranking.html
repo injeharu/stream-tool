@@ -10,6 +10,8 @@
      class="btn {{ 'btn-primary' if tab == 'keyword' else 'btn-ghost' }}" style="width:auto;">🔤 キーワード</a>
   <a href="{{ url_for('main.ranking_page', tab='bits', period=period) }}"
      class="btn {{ 'btn-primary' if tab == 'bits' else 'btn-ghost' }}" style="width:auto;">💎 ビッツ</a>
+  <a href="{{ url_for('main.ranking_page', tab='gift', period=period) }}"
+     class="btn {{ 'btn-primary' if tab == 'gift' else 'btn-ghost' }}" style="width:auto;">🎁 ギフト</a>
 </div>
 
 <div class="form-row">
@@ -25,8 +27,10 @@
 {% if tab == 'keyword' %}
 <div class="form-row">
   <label>キーワード</label>
+  {% if keywords|length > 1 %}
   <a href="{{ url_for('main.ranking_page', tab='keyword', period=period) }}"
      class="btn btn-sm {{ 'btn-primary' if not keyword_id else 'btn-ghost' }}">全キーワード合計</a>
+  {% endif %}
   {% for kw in keywords %}
   <a href="{{ url_for('main.ranking_page', tab='keyword', period=period, keyword_id=kw.id) }}"
      class="btn btn-sm {{ 'btn-primary' if keyword_id == kw.id else 'btn-ghost' }}">{{ kw.label }}</a>
@@ -37,20 +41,47 @@
 {% endif %}
 {% endif %}
 
+{% macro pager() %}
+{% if total_pages > 1 %}
+<div class="form-row" style="margin: 10px 0; flex-wrap: wrap;">
+  {% if page > 1 %}
+  <a href="{{ url_for('main.ranking_page', tab=tab, period=period, keyword_id=keyword_id, page=page-1) }}"
+     class="btn btn-ghost btn-sm">← 前へ</a>
+  {% endif %}
+  {% for p in page_window %}
+    {% if p is none %}
+    <span style="color:var(--text-dim); padding:0 4px;">…</span>
+    {% elif p == page %}
+    <span class="btn btn-primary btn-sm" style="cursor:default;">{{ p }}</span>
+    {% else %}
+    <a href="{{ url_for('main.ranking_page', tab=tab, period=period, keyword_id=keyword_id, page=p) }}"
+       class="btn btn-ghost btn-sm">{{ p }}</a>
+    {% endif %}
+  {% endfor %}
+  {% if page < total_pages %}
+  <a href="{{ url_for('main.ranking_page', tab=tab, period=period, keyword_id=keyword_id, page=page+1) }}"
+     class="btn btn-ghost btn-sm">次へ →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
 {% if rows %}
+{{ pager() }}
 <table>
   <thead>
     <tr>
       <th style="width:60px;">順位</th>
       <th>視聴者</th>
-      <th>{{ 'ビッツ' if tab == 'bits' else ('件数' if tab == 'keyword' else 'コメント数') }}</th>
+      <th>{% if tab == 'bits' %}ビッツ{% elif tab == 'gift' %}ギフト数{% elif tab == 'keyword' %}件数{% else %}コメント数{% endif %}</th>
     </tr>
   </thead>
   <tbody>
     {% for r in rows %}
+    {% set rank = rank_offset + loop.index %}
     <tr>
       <td>
-        {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
+        {% if rank == 1 %}🥇{% elif rank == 2 %}🥈{% elif rank == 3 %}🥉{% else %}{{ rank }}{% endif %}
       </td>
       <td>{{ r.display_name or r.login }}</td>
       <td>{{ r.c }}</td>
@@ -58,8 +89,14 @@
     {% endfor %}
   </tbody>
 </table>
+
+{{ pager() }}
+
 {% else %}
 <div class="empty-state">まだデータがありません。</div>
 {% endif %}
 
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='autorefresh.js') }}" defer></script>
 {% endblock %}
