@@ -25,7 +25,7 @@ Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#AppExeName}
-SetupIconFile=
+SetupIconFile=icon.ico
 LanguageDetectionMethod=locale
 
 [Languages]
@@ -51,6 +51,28 @@ Filename: "{app}\{#AppExeName}"; Description: "{#AppName} を今すぐ起動す�
 Type: filesandordirs; Name: "{app}\__pycache__"
 
 [UninstallRun]
+; 起動したままアンインストールするとexeが削除できず残骸になるため、先に終了させる。
+; ([UninstallRun]はファイル削除より前に実行される)
+Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM {#AppExeName}"; Flags: runhidden; RunOnceId: "StopApp"
 ; アプリ側で登録した「PC起動時に自動起動」の残骸を掃除する
 ; (残すと、存在しないexeをWindowsが毎回起動しようとするため)
 Filename: "reg.exe"; Parameters: "delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v TokutenDaicho /f"; Flags: runhidden; RunOnceId: "RemoveAutostart"
+
+[Code]
+{ 起動中のアプリを終了させる(インストール・アンインストールの前処理で使う) }
+procedure StopRunningApp;
+var
+  ResultCode: Integer;
+begin
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM {#AppExeName}',
+       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  { プロセス終了直後はファイルがロックされたままのことがあるため少し待つ }
+  Sleep(1500);
+end;
+
+{ 上書きインストール時、起動中だとファイルを差し替えられないので先に終了させる }
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  StopRunningApp;
+  Result := '';
+end;

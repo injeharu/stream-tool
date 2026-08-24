@@ -16,6 +16,7 @@ import irc_parser
 import milestone
 import notifier
 import ranking
+import tray
 import updater
 from irc_client import AnonIrcClient
 from web.routes import create_app
@@ -106,6 +107,10 @@ def main():
         )
 
     print(f"管理画面: {url}")
+
+    # 画面右下(通知領域)に常駐させ、起動中であることを分かるようにする
+    tray.start()
+
     if config.IS_FROZEN:
         # exe版はコンソールが出ないため、起動時に自動でブラウザを開く
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
