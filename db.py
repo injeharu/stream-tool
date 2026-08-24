@@ -710,6 +710,15 @@ def is_notify_enabled():
     return get_setting("notify_enabled", "1") == "1"
 
 
+def is_notify_persistent():
+    """通知を「閉じるまで消さない」で出すか。既定はON(見逃し防止)。"""
+    return get_setting("notify_persistent", "1") == "1"
+
+
+def set_notify_persistent(enabled):
+    set_setting("notify_persistent", "1" if enabled else "0")
+
+
 def is_update_check_enabled():
     return get_setting("update_check_enabled", "1") == "1"
 

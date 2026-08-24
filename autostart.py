@@ -1,11 +1,15 @@
 """WindowsのPC起動時自動起動(スタートアップ登録)を扱うモジュール。
 
 HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run にユーザー単位で登録する。
-管理者権限は不要。pythonw.exe(コンソール窓なし)で起動するようにする。
+管理者権限は不要。
+- exe版: exe自身をそのまま登録する
+- 開発版(python app.py): pythonw.exe(コンソール窓なし)で起動するようにする
 """
 
 import os
 import sys
+
+import config
 
 try:
     import winreg
@@ -15,9 +19,10 @@ except ImportError:
     _AVAILABLE = False
 
 RUN_KEY_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
-VALUE_NAME = "StreamShippingTool"
+VALUE_NAME = "TokutenDaicho"
+_OLD_VALUE_NAME = "StreamShippingTool"  # 旧名(発送台帳時代)の登録が残っていれば掃除する
 
-APP_PY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.py")
+APP_PY_PATH = os.path.join(config.RESOURCE_DIR, "app.py")
 
 
 def _pythonw_path():
@@ -30,6 +35,8 @@ def _pythonw_path():
 
 
 def _command():
+    if config.IS_FROZEN:
+        return f'"{sys.executable}"'
     return f'"{_pythonw_path()}" "{APP_PY_PATH}"'
 
 
@@ -53,6 +60,10 @@ def enable():
         return
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_KEY_PATH) as key:
         winreg.SetValueEx(key, VALUE_NAME, 0, winreg.REG_SZ, _command())
+        try:
+            winreg.DeleteValue(key, _OLD_VALUE_NAME)
+        except FileNotFoundError:
+            pass
 
 
 def disable():

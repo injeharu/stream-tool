@@ -108,6 +108,11 @@
     <span style="font-size:0.85rem; color:var(--text-dim);">節目到達をWindowsの通知でお知らせ(クリックで管理画面が開きます)</span>
   </div>
   <div class="form-row">
+    <label>通知を消えないように</label>
+    <input type="checkbox" name="notify_persistent" {% if notify_persistent %}checked{% endif %}>
+    <span style="font-size:0.85rem; color:var(--text-dim);">ONにすると、自分で閉じるまで通知が画面に残ります(配信中の見逃し防止)</span>
+  </div>
+  <div class="form-row">
     <label>PC起動時に自動起動</label>
     {% if autostart_available %}
     <input type="checkbox" name="autostart_enabled" {% if autostart_enabled %}checked{% endif %}>
@@ -176,25 +181,95 @@
   <p style="color:var(--text-dim); font-size:0.85rem; margin-top:-8px;">
     以下のURLをOBSの「ブラウザ」ソースに貼ると、配信画面にランキングや到達祝福を表示できます。
   </p>
-  <table>
-    <thead>
-      <tr><th>内容</th><th>URL(コピーして使ってください)</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>🏆 ランキング表示<br><span style="color:var(--text-dim); font-size:0.78rem;">幅340・高さ420推奨</span></td>
-        <td><code>http://127.0.0.1:8712/overlay/ranking?tab=message&period=week</code><br>
-          <span style="color:var(--text-dim); font-size:0.78rem;">tab= message / keyword / bits / gift、period= all / month / week で切替</span>
-        </td>
-      </tr>
-      <tr>
-        <td>🎉 節目到達の祝福バナー<br><span style="color:var(--text-dim); font-size:0.78rem;">幅520・高さ120推奨</span></td>
-        <td><code>http://127.0.0.1:8712/overlay/alert</code><br>
-          <span style="color:var(--text-dim); font-size:0.78rem;">誰かが節目に到達した瞬間だけ8秒間表示されます</span>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+  <div style="margin-bottom:18px;">
+    <div style="font-weight:600; margin-bottom:6px;">🏆 ランキング表示
+      <span style="color:var(--text-dim); font-size:0.78rem; font-weight:400;">(OBSのブラウザソース 幅340・高さ420推奨)</span>
+    </div>
+    <div class="form-row">
+      <label>種類</label>
+      <select id="ov-tab" onchange="updateRankingUrl()">
+        <option value="message">💬 コメント数</option>
+        <option value="keyword">🔤 キーワード</option>
+        <option value="bits">💎 ビッツ</option>
+        <option value="gift">🎁 ギフト</option>
+      </select>
+      <label>期間</label>
+      <select id="ov-period" onchange="updateRankingUrl()">
+        <option value="week">直近7日</option>
+        <option value="month">今月</option>
+        <option value="all">累計</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <input type="text" id="ov-ranking-url" readonly style="flex:1; font-family:monospace; font-size:0.82rem;">
+      <button type="button" class="btn btn-primary" style="width:auto;"
+              onclick="copyUrl('ov-ranking-url', this)">📋 コピー</button>
+      <a id="ov-ranking-open" href="#" target="_blank" rel="noopener" class="btn btn-ghost" style="width:auto;">👁 確認</a>
+    </div>
+  </div>
+
+  <div>
+    <div style="font-weight:600; margin-bottom:6px;">🎉 節目到達の祝福バナー
+      <span style="color:var(--text-dim); font-size:0.78rem; font-weight:400;">(幅700・高さ400推奨。紙吹雪と効果音つきで8秒間表示)</span>
+    </div>
+    <div class="form-row">
+      <input type="text" id="ov-alert-url" readonly
+             style="flex:1; font-family:monospace; font-size:0.82rem;">
+      <button type="button" class="btn btn-primary" style="width:auto;"
+              onclick="copyUrl('ov-alert-url', this)">📋 コピー</button>
+      <a href="{{ url_for('main.overlay_alert') }}" target="_blank" rel="noopener" class="btn btn-ghost" style="width:auto;">👁 確認</a>
+    </div>
+  </div>
+
+  <script>
+    function updateRankingUrl() {
+      var tab = document.getElementById("ov-tab").value;
+      var period = document.getElementById("ov-period").value;
+      var url = location.origin + "/overlay/ranking?tab=" + tab + "&period=" + period;
+      document.getElementById("ov-ranking-url").value = url;
+      document.getElementById("ov-ranking-open").href = url;
+    }
+
+    function copyUrl(inputId, btn) {
+      var input = document.getElementById(inputId);
+      input.select();
+      input.setSelectionRange(0, 99999);  // スマホ等でも全選択されるように
+      var done = function () {
+        var original = btn.textContent;
+        btn.textContent = "✅ コピーしました";
+        setTimeout(function () { btn.textContent = original; }, 1500);
+      };
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(input.value).then(done, function () { document.execCommand("copy"); done(); });
+      } else {
+        document.execCommand("copy");
+        done();
+      }
+    }
+
+    updateRankingUrl();
+    document.getElementById("ov-alert-url").value = location.origin + "/overlay/alert";
+  </script>
+
+  <h2 style="margin-top:20px; font-size:0.95rem;">🎬 テスト発火</h2>
+  <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-6px;">
+    OBSでの見え方を確認できます。押すと祝福バナーが実際に表示されます(記録には残りません)。
+    <br>※OBSで音を出すには、ブラウザソースの設定で「ページの音声をミュート」のチェックを外してください。
+  </p>
+  <form method="post" action="{{ url_for('main.overlay_test') }}">
+    <div class="form-row">
+      <label>表示名</label>
+      <input type="text" name="name" placeholder="テスト視聴者" style="width:160px;">
+      <label>種別</label>
+      <select name="kind">
+        <option value="cumulative">通算</option>
+        <option value="streak">連続</option>
+      </select>
+      <label>月数</label>
+      <input type="number" name="threshold" class="num-sm" min="1" value="12">
+      <button type="submit" class="btn btn-primary" style="width:auto;">🎬 テスト表示する</button>
+    </div>
+  </form>
 </div>
 
 <div class="panel">

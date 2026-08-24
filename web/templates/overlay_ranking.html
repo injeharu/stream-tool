@@ -37,6 +37,19 @@
   .rank { width: 28px; text-align: center; font-weight: 700; }
   .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .value { font-weight: 700; color: #ffb84d; }
+
+  li { animation: slidein 0.4s ease backwards; }
+  /* 数値が増えた行だけ光らせて、動きが分かるようにする */
+  li.updated .value { animation: flash 1.2s ease; }
+
+  @keyframes slidein {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes flash {
+    0% { color: #fff; text-shadow: 0 0 12px #ffb84d; transform: scale(1.25); }
+    100% { color: #ffb84d; text-shadow: none; transform: scale(1); }
+  }
 </style>
 </head>
 <body>
@@ -49,6 +62,9 @@
   var PERIOD = {{ period | tojson }};
   var MEDALS = ["🥇", "🥈", "🥉"];
 
+  var prevValues = {};   // 前回の値を覚えておき、増えた行だけ光らせる
+  var firstDraw = true;
+
   function refresh() {
     fetch("/api/overlay/ranking?tab=" + TAB + "&period=" + PERIOD)
       .then(function (r) { return r.json(); })
@@ -56,8 +72,15 @@
         document.getElementById("title").textContent = "🏆 " + data.title + "ランキング";
         var list = document.getElementById("list");
         list.innerHTML = "";
+        var nextValues = {};
+
         data.rows.forEach(function (row, i) {
+          nextValues[row.name] = row.value;
           var li = document.createElement("li");
+          li.style.animationDelay = (i * 0.03) + "s";
+          if (!firstDraw && prevValues[row.name] !== undefined && row.value > prevValues[row.name]) {
+            li.className = "updated";
+          }
           var rank = document.createElement("span");
           rank.className = "rank";
           rank.textContent = MEDALS[i] || (i + 1);
@@ -72,6 +95,9 @@
           li.appendChild(value);
           list.appendChild(li);
         });
+
+        prevValues = nextValues;
+        firstDraw = false;
       })
       .catch(function () {});
   }

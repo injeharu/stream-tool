@@ -31,7 +31,6 @@ def on_line(raw):
         milestone.handle_privmsg(parsed)
 
 
-BACKUP_DIR = os.path.join(config.BASE_DIR, "backups")
 BACKUP_KEEP = 3
 
 
@@ -48,13 +47,13 @@ def backup_db():
     """起動時に台帳を日次バックアップする(PC故障・誤操作からの保険。直近3世代のみ保持)。"""
     if not os.path.exists(config.DB_PATH):
         return
-    os.makedirs(BACKUP_DIR, exist_ok=True)
+    os.makedirs(config.BACKUP_DIR, exist_ok=True)
     today = datetime.date.today().strftime("%Y%m%d")
-    dest = os.path.join(BACKUP_DIR, f"data-{today}.db")
+    dest = os.path.join(config.BACKUP_DIR, f"data-{today}.db")
     if not os.path.exists(dest):
         shutil.copyfile(config.DB_PATH, dest)
         print(f"[バックアップ] {dest}")
-    old = sorted(glob.glob(os.path.join(BACKUP_DIR, "data-*.db")))
+    old = sorted(glob.glob(os.path.join(config.BACKUP_DIR, "data-*.db")))
     for path in old[:-BACKUP_KEEP]:
         os.remove(path)
 
@@ -77,13 +76,16 @@ def main():
     channel = db.get_setting("channel_name")
     # pythonw(スタートアップ起動)では sys.stdin が None になるため必ず存在確認する
     if not channel and sys.stdin is not None and sys.stdin.isatty():
-        # スタートアップ自動起動(pythonw.exe)には対話コンソールが無いため、その場合は入力を求めない
-        raw = input("監視するTwitchチャンネル名(またはチャンネルURL)を入力してください: ")
+        # 入力が読めない環境(ダブルクリック起動など)でも落ちないよう必ず握りつぶす
+        try:
+            raw = input("監視するTwitchチャンネル名(またはチャンネルURL)を入力してください: ")
+        except (EOFError, OSError):
+            raw = ""
         channel = db.normalize_channel(raw)
         if channel:
             db.set_setting("channel_name", channel)
         else:
-            print("入力が正しくないため未設定のまま起動します。設定画面から登録してください。")
+            print("チャンネル名は設定画面からでも登録できます。")
 
     # チャンネル未設定でもスレッドは起動しておき、設定画面での入力を待機する
     # (保存すると即座に監視を始められるようにするため)
@@ -104,6 +106,9 @@ def main():
         )
 
     print(f"管理画面: {url}")
+    if config.IS_FROZEN:
+        # exe版はコンソールが出ないため、起動時に自動でブラウザを開く
+        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     app = create_app()
     app.run(host=config.FLASK_HOST, port=config.FLASK_PORT, use_reloader=False)
 

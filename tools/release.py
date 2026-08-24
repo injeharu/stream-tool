@@ -22,9 +22,24 @@ import config  # GITHUB_REPO を共有(リポジトリ名の二重管理を避�
 
 GITHUB_REPO = config.GITHUB_REPO
 
-EXCLUDE_DIR_NAMES = {".git", "__pycache__", ".venv", "venv", "backups"}
+EXCLUDE_DIR_NAMES = {
+    ".git", "__pycache__", ".venv", "venv", "backups",
+    "dist", "build", "dist_installer", "installer",
+}
 # github_token.txt は絶対に配布ZIPへ入れない(トークン流出防止)
-EXCLUDE_FILE_NAMES = {"data.db", "data.db-wal", "data.db-shm", "github_token.txt"}
+# 開発者用のリリースツールも利用者には不要なため同梱しない
+EXCLUDE_FILE_NAMES = {
+    "data.db",
+    "data.db-wal",
+    "data.db-shm",
+    "github_token.txt",
+    ".gitignore",
+    "commit.bat",
+    "release.bat",
+    "build_installer.bat",
+    "commit.py",
+    "release.py",
+}
 # 視聴者データのバックアップ(.bak)等も同梱しない(プライバシー保護)
 EXCLUDE_SUFFIXES = (".db", ".db.bak", ".bak")
 
@@ -111,14 +126,20 @@ def create_release(token, tag, notes):
     return github_api_request(url, token, method="POST", data=data)
 
 
-def upload_asset(token, upload_url_template, zip_path):
-    name = os.path.basename(zip_path)
+def upload_asset(token, upload_url_template, file_path, content_type="application/zip"):
+    name = os.path.basename(file_path)
     upload_url = upload_url_template.split("{")[0] + f"?name={name}"
-    with open(zip_path, "rb") as f:
+    with open(file_path, "rb") as f:
         content = f.read()
     print(f"アセットをアップロード中: {name}")
-    github_api_request(upload_url, token, method="POST", data=content, content_type="application/zip")
+    github_api_request(upload_url, token, method="POST", data=content, content_type=content_type)
     print("アップロード完了。")
+
+
+def find_installer(version):
+    """build_installer.bat で作られたインストーラーがあれば、そのパスを返す。"""
+    path = os.path.join(BASE_DIR, "dist_installer", f"TokutenDaicho-Setup-v{version}.exe")
+    return path if os.path.exists(path) else None
 
 
 def load_or_ask_token():
@@ -179,6 +200,16 @@ def main():
 
     zip_path = build_zip(new_version)
 
+    installer_path = find_installer(new_version)
+    if installer_path:
+        print(f"インストーラーを検出しました: {os.path.basename(installer_path)}")
+    else:
+        print(
+            "\nインストーラー(exe版)が見つかりません。"
+            "build_installer.bat を先に実行すると、インストーラーも一緒に公開できます。"
+            "\nソースZIPのみでリリースを続けます。"
+        )
+
     token = load_or_ask_token()
     if not token:
         print("トークンが入力されなかったため、GitHub Releaseの作成をスキップしました。")
@@ -187,7 +218,9 @@ def main():
 
     print(f"\nGitHub Release {tag} を作成しています...")
     release = create_release(token, tag, notes)
-    upload_asset(token, release["upload_url"], zip_path)
+    upload_asset(token, release["upload_url"], zip_path, content_type="application/zip")
+    if installer_path:
+        upload_asset(token, release["upload_url"], installer_path, content_type="application/octet-stream")
 
     print(f"\n✅ 完了しました: {release.get('html_url')}")
     print("これで旧バージョンを使っている人の画面左下に更新ボタンが表示されます。")

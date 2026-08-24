@@ -4,43 +4,167 @@
 <meta charset="UTF-8">
 <title>到達祝福オーバーレイ</title>
 <style>
-  /* OBSブラウザソース用: 節目到達の祝福バナー(普段は何も表示しない) */
+  /* OBSブラウザソース用: 節目到達の祝福演出(普段は何も表示しない) */
   body {
     margin: 0;
     background: transparent;
     font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
     overflow: hidden;
   }
+
+  #stage {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
   #banner {
     display: none;
-    width: 480px;
-    margin: 10px auto;
-    background: linear-gradient(135deg, rgba(145, 70, 255, 0.92), rgba(255, 92, 122, 0.92));
-    border-radius: 16px;
-    padding: 18px 26px;
+    position: relative;
+    margin-top: 12px;
+    padding: 20px 34px;
+    border-radius: 18px;
     color: #fff;
     text-align: center;
-    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
-    animation: pop 0.5s ease;
+    background: linear-gradient(135deg, #9146ff, #ff5c7a, #ffb84d);
+    background-size: 200% 200%;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55), 0 0 40px rgba(145, 70, 255, 0.6);
+    animation: pop 0.6s cubic-bezier(.2, 1.5, .4, 1), shimmer 3s linear infinite;
   }
-  #banner .big { font-size: 1.5rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
-  #banner .sub { font-size: 1.0rem; margin-top: 4px; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+
+  #banner.out { animation: fadeout 0.6s ease forwards; }
+
+  #banner .big {
+    font-size: 1.7rem;
+    font-weight: 800;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  }
+
+  #banner .sub {
+    font-size: 1.1rem;
+    margin-top: 6px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  }
+
+  #banner .months {
+    display: inline-block;
+    font-size: 1.35rem;
+    font-weight: 900;
+    padding: 2px 12px;
+    margin: 0 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.25);
+    animation: bounce 0.9s ease infinite;
+  }
+
+  /* 紙吹雪 */
+  .confetti {
+    position: absolute;
+    top: -20px;
+    width: 10px;
+    height: 16px;
+    opacity: 0.95;
+    animation: fall linear forwards;
+  }
+
   @keyframes pop {
-    0% { transform: scale(0.6); opacity: 0; }
-    70% { transform: scale(1.06); }
+    0% { transform: scale(0.5) translateY(-30px); opacity: 0; }
+    70% { transform: scale(1.08) translateY(0); }
     100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes fadeout {
+    to { transform: scale(0.9) translateY(-16px); opacity: 0; }
+  }
+  @keyframes shimmer {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  @keyframes fall {
+    to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
   }
 </style>
 </head>
 <body>
-<div id="banner">
-  <div class="big">🎉 <span id="name"></span> さん</div>
-  <div class="sub"><span id="detail"></span>到達おめでとうございます!</div>
+<div id="stage">
+  <div id="banner">
+    <div class="big">🎉 <span id="name"></span> さん</div>
+    <div class="sub"><span id="kind"></span><span class="months" id="months"></span>到達おめでとうございます!</div>
+  </div>
 </div>
 <script>
   var lastId = null;
   var firstPoll = true;
   var SHOW_MS = 8000;
+  var COLORS = ["#9146ff", "#ff5c7a", "#ffb84d", "#3dd68c", "#4dd2ff", "#ffffff"];
+
+  /* 効果音: 外部ファイルを使わずブラウザ内で音を合成する(配布時に音源を同梱しなくて済む) */
+  var audioCtx = null;
+  function playFanfare() {
+    try {
+      if (!audioCtx) {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        audioCtx = new Ctx();
+      }
+      // ド→ミ→ソ→高いド の明るいアルペジオ
+      var notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach(function (freq, i) {
+        var start = audioCtx.currentTime + i * 0.12;
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.25, start + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.55);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + 0.6);
+      });
+    } catch (e) { /* 音が出せない環境でも演出は続行する */ }
+  }
+
+  function launchConfetti(count) {
+    var stage = document.getElementById("stage");
+    for (var i = 0; i < count; i++) {
+      var el = document.createElement("div");
+      el.className = "confetti";
+      el.style.left = Math.random() * 100 + "%";
+      el.style.background = COLORS[Math.floor(Math.random() * COLORS.length)];
+      el.style.animationDuration = (2.2 + Math.random() * 1.8) + "s";
+      el.style.animationDelay = (Math.random() * 0.6) + "s";
+      el.style.width = (6 + Math.random() * 8) + "px";
+      el.style.height = (10 + Math.random() * 10) + "px";
+      stage.appendChild(el);
+      (function (node) {
+        setTimeout(function () { node.remove(); }, 5000);
+      })(el);
+    }
+  }
+
+  function celebrate(data) {
+    document.getElementById("name").textContent = data.name;
+    document.getElementById("kind").textContent = data.kind;
+    document.getElementById("months").textContent = data.threshold + "ヶ月";
+
+    var banner = document.getElementById("banner");
+    banner.classList.remove("out");
+    banner.style.display = "block";
+    launchConfetti(60);
+    playFanfare();
+
+    setTimeout(function () { banner.classList.add("out"); }, SHOW_MS - 600);
+    setTimeout(function () { banner.style.display = "none"; }, SHOW_MS);
+  }
 
   function poll() {
     fetch("/api/overlay/latest_milestone")
@@ -55,18 +179,14 @@
         }
         if (data.id !== lastId) {
           lastId = data.id;
-          document.getElementById("name").textContent = data.name;
-          document.getElementById("detail").textContent = data.kind + data.threshold + "ヶ月";
-          var banner = document.getElementById("banner");
-          banner.style.display = "block";
-          setTimeout(function () { banner.style.display = "none"; }, SHOW_MS);
+          celebrate(data);
         }
       })
       .catch(function () {});
   }
 
   poll();
-  setInterval(poll, 5000);
+  setInterval(poll, 3000);
 </script>
 </body>
 </html>

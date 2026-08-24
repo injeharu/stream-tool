@@ -1,7 +1,24 @@
 import os
+import sys
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "data.db")
+# exe化(PyInstaller)されているかどうか。
+# 開発時(python app.py)はFalse、ビルド後のexe実行時にTrueになる。
+IS_FROZEN = getattr(sys, "frozen", False)
+
+if IS_FROZEN:
+    # exe自体が置かれた場所(テンプレート等の同梱リソースはここを基準に探す)
+    RESOURCE_DIR = sys._MEIPASS if hasattr(sys, "_MEIPASS") else os.path.dirname(sys.executable)
+    # インストール先(Program Files等)は書き込み不可のことがあるため、
+    # データは必ずユーザーごとの書き込み可能な場所(%APPDATA%)に置く
+    DATA_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "TokutenDaicho")
+    os.makedirs(DATA_DIR, exist_ok=True)
+else:
+    RESOURCE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATA_DIR = RESOURCE_DIR
+
+BASE_DIR = RESOURCE_DIR  # 後方互換(replay.py等が参照)
+DB_PATH = os.path.join(DATA_DIR, "data.db")
+BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 
 DEFAULT_CUMULATIVE_THRESHOLDS = [6, 12, 24]
 DEFAULT_STREAK_THRESHOLDS = [6, 12, 24]
@@ -19,8 +36,7 @@ TIER_LABELS = {"1000": "Tier 1", "2000": "Tier 2", "3000": "Tier 3", "Prime": "P
 
 RANKING_TOP_N = 20
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.5"
 GITHUB_REPO = "injeharu/stream-tool"  # owner/repo(更新確認とリリース作成の両方で使用)
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 UPDATE_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
-

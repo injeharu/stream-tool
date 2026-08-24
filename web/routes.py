@@ -3,6 +3,7 @@
 import csv
 import io
 import json
+import os
 
 from urllib.parse import urlparse
 
@@ -376,6 +377,7 @@ def settings():
         db.set_interval("streak", int(streak_interval_raw) if streak_interval_raw.isdigit() else None)
 
         db.set_setting("notify_enabled", notify_enabled)
+        db.set_notify_persistent(request.form.get("notify_persistent") == "on")
         db.set_eligible_tiers(eligible_tiers)
         db.set_kind_enabled("cumulative", kind_cumulative)
         db.set_kind_enabled("streak", kind_streak)
@@ -396,6 +398,7 @@ def settings():
         "cumulative_interval": db.get_interval("cumulative") or "",
         "streak_interval": db.get_interval("streak") or "",
         "notify_enabled": db.is_notify_enabled(),
+        "notify_persistent": db.is_notify_persistent(),
         "all_tiers": config.ALL_TIERS,
         "tier_labels": config.TIER_LABELS,
         "eligible_tiers": db.get_eligible_tiers(),
@@ -492,6 +495,19 @@ def api_overlay_ranking():
 
 @bp.route("/api/overlay/latest_milestone")
 def api_overlay_latest_milestone():
+    # テスト発火が押されていればそちらを優先(OBSでの見え方確認用)
+    test = state.get_test_alert()
+    if test is not None:
+        return jsonify(
+            {
+                "id": f"test-{test['seq']}",
+                "name": test["name"],
+                "kind": test["kind"],
+                "threshold": test["threshold"],
+                "test": True,
+            }
+        )
+
     row = db.latest_milestone()
     if row is None:
         return jsonify({"id": None})
@@ -505,7 +521,21 @@ def api_overlay_latest_milestone():
     )
 
 
+@bp.route("/overlay/test", methods=["POST"])
+def overlay_test():
+    """設定画面から祝福オーバーレイをテスト表示する。"""
+    name = request.form.get("name", "").strip() or "テスト視聴者"
+    threshold = request.form.get("threshold", type=int) or 12
+    kind = "連続" if request.form.get("kind") == "streak" else "通算"
+    state.fire_test_alert(name, kind, threshold)
+    return redirect(url_for("main.settings"))
+
+
 def create_app():
-    app = Flask(__name__)
+    # exe化後はモジュールの__file__基準のパス解決が信用できないため、
+    # テンプレート/静的ファイルの場所を明示的に指定する
+    template_folder = os.path.join(config.RESOURCE_DIR, "web", "templates")
+    static_folder = os.path.join(config.RESOURCE_DIR, "web", "static")
+    app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
     app.register_blueprint(bp)
     return app

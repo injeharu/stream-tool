@@ -8,3 +8,6 @@ data.db.bak
 backups/
 github_token.txt
 stream-tool-v*.zip
+/dist/
+/build/
+/dist_installer/
