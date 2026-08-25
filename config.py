@@ -34,7 +34,7 @@ TIER_LABELS = {"1000": "Tier 1", "2000": "Tier 2", "3000": "Tier 3", "Prime": "P
 
 RANKING_TOP_N = 20
 
-APP_VERSION = "1.2.9"
+APP_VERSION = "1.3.0"
 GITHUB_REPO = "injeharu/stream-tool"  # owner/repo(更新確認とリリース作成の両方で使用)
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 UPDATE_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
