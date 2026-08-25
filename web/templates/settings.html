@@ -126,6 +126,8 @@
     {% if update_check_configured %}
     <input type="checkbox" name="update_check_enabled" {% if update_check_enabled %}checked{% endif %}>
     <span style="font-size:0.85rem; color:var(--text-dim);">新バージョン公開時に左下でお知らせします</span>
+    <button type="button" class="btn btn-ghost btn-sm" id="check-update-btn" onclick="checkUpdateNow()">🔍 今すぐ確認</button>
+    <span id="check-update-result" style="font-size:0.85rem;"></span>
     {% else %}
     <span style="font-size:0.85rem; color:var(--text-dim);">現在このツールでは利用できません(配布準備中の機能です)</span>
     {% endif %}
@@ -249,6 +251,37 @@
 
     updateRankingUrl();
     document.getElementById("ov-alert-url").value = location.origin + "/overlay/alert";
+
+    function checkUpdateNow() {
+      var btn = document.getElementById("check-update-btn");
+      var result = document.getElementById("check-update-result");
+      btn.disabled = true;
+      btn.textContent = "確認中...";
+      fetch("/update/check", { method: "POST" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.ok) {
+            result.style.color = "var(--danger)";
+            result.textContent = "確認に失敗しました(通信環境をご確認ください)";
+          } else if (d.update) {
+            result.style.color = "var(--warn)";
+            result.textContent = "🔄 v" + d.version + " があります。左下のボタンから更新できます";
+            /* 左下バッジを反映するためリロード(結果メッセージが読めるよう少し待つ) */
+            setTimeout(function () { location.reload(); }, 2500);
+          } else {
+            result.style.color = "var(--success)";
+            result.textContent = "✅ 最新版です(v" + d.current + ")";
+          }
+        })
+        .catch(function () {
+          result.style.color = "var(--danger)";
+          result.textContent = "確認に失敗しました";
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.textContent = "🔍 今すぐ確認";
+        });
+    }
   </script>
 
   <h2 style="margin-top:20px; font-size:0.95rem;">🎬 テスト発火</h2>

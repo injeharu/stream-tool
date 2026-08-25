@@ -68,6 +68,21 @@ def api_update_progress():
     return jsonify(state.get_update_progress())
 
 
+@bp.route("/update/check", methods=["POST"])
+def update_check_now():
+    """設定画面の「今すぐ確認」ボタン。自動確認OFFでも手動なら実行する。"""
+    ok = updater.check_once(force=True)
+    info = state.get_available_update()
+    return jsonify(
+        {
+            "ok": ok,
+            "current": config.APP_VERSION,
+            "update": info is not None,
+            "version": info["version"] if info else None,
+        }
+    )
+
+
 @bp.route("/tutorial/seen", methods=["POST"])
 def tutorial_seen():
     db.mark_tutorial_seen()

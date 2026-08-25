@@ -32,12 +32,14 @@ def _is_newer(remote_version, current_version):
     return _parse_version(remote_version) > _parse_version(current_version)
 
 
-def check_once():
-    """1回だけ最新版を確認する。失敗しても例外を外に出さない(起動を邪魔しないため)。"""
+def check_once(force=False):
+    """1回だけ最新版を確認する。失敗しても例外を外に出さない(起動を邪魔しないため)。
+    force=True は設定画面の「今すぐ確認」ボタン用(自動確認OFFでも実行する)。
+    成功時True、失敗時Falseを返す。"""
     if not config.UPDATE_CHECK_URL:
-        return
-    if not db.is_update_check_enabled():
-        return
+        return False
+    if not force and not db.is_update_check_enabled():
+        return False
 
     try:
         req = urllib.request.Request(
@@ -54,8 +56,10 @@ def check_once():
             state.set_available_update({"version": remote_version.lstrip("vV"), "url": release_url})
         else:
             state.set_available_update(None)
+        return True
     except Exception as e:
         print(f"[更新確認エラー] {e}")
+        return False
 
 
 def run_forever():
