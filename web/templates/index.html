@@ -65,7 +65,34 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="empty-state">現在、特典待ちの項目はありません。</div>
+{% if tiles.known_subscribers == 0 %}
+<div class="panel">
+  <h2>まだ記録がありません(これで正常です)</h2>
+  <p style="font-size:0.9rem; line-height:1.8;">
+    このツールは<b>起動している間のチャット</b>から記録します。過去のサブスクは遡れないため、
+    導入した直後は空っぽです。<b>視聴者が再サブスクしてチャットに流れたら、そこから順に溜まっていきます。</b>
+  </p>
+  <p style="font-size:0.9rem; line-height:1.8; margin-bottom:6px;">今すぐ埋めたい場合は、次の方法があります。</p>
+  <ul style="font-size:0.9rem; line-height:1.9; margin-top:0;">
+    <li><a href="{{ url_for('main.subscribers') }}">👥 サブスク一覧</a>から、月数が分かっている人を手入力できます</li>
+    <li><a href="{{ url_for('main.twitch_page') }}">🔗 Twitch連携</a>すると、いまサブスクしている人の名簿を取り込めます
+      <span style="color:var(--text-dim);">(※月数はTwitchが公開していないため取得できません)</span></li>
+  </ul>
+  <p class="hint">
+    配信開始前にツールを起動しておくと取りこぼしが減ります。
+    <a href="{{ url_for('main.settings') }}">設定</a>の「PC起動時に自動起動」もおすすめです。
+  </p>
+</div>
+{% else %}
+<div class="empty-state">
+  現在、特典待ちの項目はありません。<br>
+  <span style="font-size:0.85rem; color:var(--text-dim);">
+    月数を把握している人は {{ tiles.known_subscribers }} 人います。
+    閾値や対象ティアを変えた直後であれば、<a href="{{ url_for('main.settings') }}">設定</a>の
+    「🔁 全員を判定し直す」で反映できます。
+  </span>
+</div>
+{% endif %}
 {% endif %}
 </div>
 
