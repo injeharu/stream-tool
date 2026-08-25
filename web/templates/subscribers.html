@@ -3,6 +3,16 @@
 {% block heading %}👥 サブスク一覧{% endblock %}
 {% block content %}
 
+{% if twitch_linked %}
+<div class="panel" style="margin-bottom:16px; background:var(--accent-soft); border-color:var(--accent);">
+  <p style="margin:0; font-size:0.88rem;">
+    💡 この一覧の<b>月数はチャットの記録</b>です(Twitchは月数を公開していないため)。
+    <b>✅Twitch確認済み</b>の印は、Twitchの公式名簿に載っている人につきます。
+    名簿の全体は <a href="{{ url_for('main.twitch_page') }}">🔗 Twitch連携</a> でご確認いただけます。
+  </p>
+</div>
+{% endif %}
+
 <div class="panel">
   <h2>視聴者を手動で追加・更新</h2>
   <p style="color:var(--text-dim); font-size:0.85rem; margin-top:-8px;">
@@ -76,6 +86,12 @@
     <tr>
       <td>{{ r.display_name or r.login }}
         <span style="color:var(--text-dim); font-size:0.75rem;">@{{ r.login }}</span>
+        {% if r.twitch_verified %}
+        <span title="Twitchの公式名簿に載っています" style="font-size:0.75rem; color:var(--success);">✅Twitch確認済み</span>
+        {% endif %}
+        {% if r.twitch_is_gift %}
+        <span title="ギフトで贈られたサブスクです" style="font-size:0.75rem; color:var(--text-dim);">🎁{{ r.twitch_gifter or '贈り主不明' }}さんから</span>
+        {% endif %}
       </td>
       <td>{{ r.cumulative_months if r.cumulative_months is not none else '-' }}</td>
       <td>{{ r.streak_months if r.streak_months is not none else '-' }}</td>

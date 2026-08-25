@@ -393,11 +393,16 @@ def upsert_sub_state(channel, login, display_name, cumulative_months, streak_mon
 
 
 def list_all_sub_states(limit=None, offset=0):
+    # Twitch連携している場合、公式名簿に載っているかどうかを併記する
+    # (記録そのものは変えず、確認済みの印とギフト情報を添えるだけ)
     sql = """
         SELECT s.login, COALESCE(v.custom_name, s.display_name) AS display_name,
-               s.cumulative_months, s.streak_months, s.tier, s.source, s.updated_at
+               s.cumulative_months, s.streak_months, s.tier, s.source, s.updated_at,
+               CASE WHEN t.login IS NOT NULL THEN 1 ELSE 0 END AS twitch_verified,
+               t.tier AS twitch_tier, t.is_gift AS twitch_is_gift, t.gifter_name AS twitch_gifter
         FROM sub_state s
         LEFT JOIN viewers v ON v.channel = s.channel AND v.login = s.login
+        LEFT JOIN twitch_subscribers t ON t.channel = s.channel AND t.login = s.login
         WHERE s.channel = ?
         ORDER BY s.cumulative_months DESC NULLS LAST, s.display_name COLLATE NOCASE ASC
     """

@@ -51,6 +51,9 @@ def start_device_auth():
             result = json.loads(res.read().decode())
     except urllib.error.HTTPError as e:
         raise TwitchApiError(f"認証を開始できませんでした: {e.code}")
+    except OSError:
+        # 通信できない(ネット切断・Twitch障害など)。URLErrorもOSErrorに含まれる
+        raise TwitchApiError("Twitchに接続できませんでした。通信環境をご確認ください")
 
     global _pending
     with _auth_lock:
@@ -88,7 +91,12 @@ def _poll_for_token():
             with urllib.request.urlopen(req, timeout=15) as res:
                 token = json.loads(res.read().decode())
             _save_token(token)
-            _clear_pending()
+            # 承認された直後にアカウント名も控えておく(画面表示と取り込み時の照合に使う)
+            try:
+                fetch_me()
+            except Exception:
+                pass
+            _clear_pending(pending["device_code"])
             print("[Twitch連携] 認証が完了しました")
             return
         except urllib.error.HTTPError as e:
@@ -97,17 +105,20 @@ def _poll_for_token():
                 time.sleep(pending["interval"])
                 continue
             print(f"[Twitch連携] 認証に失敗しました: {body[:200]}")
-            _clear_pending()
+            _clear_pending(pending["device_code"])
             return
         except Exception:
             time.sleep(pending["interval"])
-    _clear_pending()
+    _clear_pending(pending["device_code"])
 
 
-def _clear_pending():
+def _clear_pending(device_code=None):
+    """認証待ちを解除する。やり直しで新しい認証が始まっていた場合は、
+    古い待機処理が新しい方を消してしまわないようコードの一致を確認する。"""
     global _pending
     with _auth_lock:
-        _pending = None
+        if device_code is None or (_pending and _pending.get("device_code") == device_code):
+            _pending = None
 
 
 def is_authenticating():
@@ -192,6 +203,9 @@ def _api(path, retry_on_auth_error=True):
         except Exception:
             message = body
         raise TwitchApiError(f"{e.code}: {message}")
+    except OSError:
+        # 通信できない(ネット切断・Twitch障害など)
+        raise TwitchApiError("Twitchに接続できませんでした。通信環境をご確認ください")
 
 
 def fetch_me():

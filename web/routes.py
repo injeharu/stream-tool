@@ -49,6 +49,10 @@ def inject_status():
         "tutorial_seen": db.is_tutorial_seen(),
         "current_channel": db.current_channel(),
         "is_frozen": config.IS_FROZEN,
+        # 連携済みのときだけ、各画面に取得元の案内を出すために使う。
+        # 「今見ているチャンネルの名簿を取り込み済みか」までを条件にして、
+        # 別チャンネルを見ているときに的外れな案内が出ないようにする
+        "twitch_linked": twitch_api.is_linked() and db.count_twitch_subscribers() > 0,
     }
 
 

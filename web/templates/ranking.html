@@ -66,6 +66,15 @@
 {% endif %}
 {% endmacro %}
 
+{% if tab == 'bits' and twitch_linked %}
+<div class="panel" style="margin-bottom:16px; background:var(--accent-soft); border-color:var(--accent);">
+  <p style="margin:0; font-size:0.88rem;">
+    💡 この一覧は<b>チャットで拾えた分</b>の集計です。ツール導入前を含む正確な総額は
+    <a href="{{ url_for('main.twitch_page', tab='bits') }}">🔗 Twitch連携の「💎ビッツ公式」タブ</a>でご確認いただけます。
+  </p>
+</div>
+{% endif %}
+
 {% if tab in ('gift', 'bits') %}
 <div class="panel" style="margin-bottom:16px;">
   <h2>{{ '🎁 ギフト' if tab == 'gift' else '💎 ビッツ' }}数の手入力</h2>
