@@ -22,7 +22,14 @@
 
   function tick() {
     if (!isTourActive() && !isEditing() && !recentlyInteracted() && document.visibilityState === "visible") {
-      window.location.reload();
+      /* サーバーが生きている時だけリロードする。
+         終了・更新中はブラウザのエラー画面ではなく、lifecycle.js側の案内画面に任せる */
+      fetch("/api/alive", { cache: "no-store" })
+        .then(function (r) {
+          if (r.ok) { window.location.reload(); }
+          else { setTimeout(tick, INTERVAL_MS); }
+        })
+        .catch(function () { /* lifecycle.jsが終了画面を出すのでリロードしない */ });
       return;
     }
     setTimeout(tick, INTERVAL_MS);

@@ -15,6 +15,7 @@ import db
 import state
 import milestone
 import ranking
+import updater
 
 bp = Blueprint("main", __name__)
 
@@ -43,7 +44,28 @@ def inject_status():
         "app_version": config.APP_VERSION,
         "tutorial_seen": db.is_tutorial_seen(),
         "current_channel": db.current_channel(),
+        "is_frozen": config.IS_FROZEN,
     }
+
+
+@bp.route("/api/alive")
+def api_alive():
+    """ページ側の生存確認用。アプリ終了を画面が検知するために使う。"""
+    return jsonify({"ok": True, "version": config.APP_VERSION})
+
+
+@bp.route("/update/start", methods=["POST"])
+def update_start():
+    """ワンクリック更新の開始(exe版のみ)。"""
+    if not config.IS_FROZEN:
+        return jsonify({"ok": False, "message": "ソース実行版は git pull で更新してください"}), 400
+    updater.start_one_click_update()
+    return jsonify({"ok": True})
+
+
+@bp.route("/api/update/progress")
+def api_update_progress():
+    return jsonify(state.get_update_progress())
 
 
 @bp.route("/tutorial/seen", methods=["POST"])

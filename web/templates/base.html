@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <script src="{{ url_for('static', filename='theme.js') }}" defer></script>
 <script src="{{ url_for('static', filename='tutorial.js') }}" defer></script>
+<script src="{{ url_for('static', filename='lifecycle.js') }}" defer></script>
 </head>
 <body data-tutorial-autoshow="{{ '0' if tutorial_seen else '1' }}">
 <script>
@@ -23,9 +24,16 @@
   <a data-tour="nav-settings" href="{{ url_for('main.settings') }}" class="{{ 'active' if active == 'settings' }}">⚙ 設定</a>
   <div style="flex:1;"></div>
   {% if available_update %}
-  <a href="{{ available_update.url }}" target="_blank" rel="noopener" class="update-badge">
-    🔄 更新があります v{{ available_update.version }}
-  </a>
+    {% if is_frozen %}
+    <a href="#" id="update-badge" class="update-badge"
+       onclick="startOneClickUpdate('{{ available_update.version }}'); return false;">
+      🔄 更新があります v{{ available_update.version }}
+    </a>
+    {% else %}
+    <a href="{{ available_update.url }}" target="_blank" rel="noopener" class="update-badge">
+      🔄 更新があります v{{ available_update.version }}
+    </a>
+    {% endif %}
   {% endif %}
   <div class="version-label">v{{ app_version }}</div>
 </div>

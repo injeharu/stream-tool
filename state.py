@@ -48,6 +48,24 @@ def get_irc_client():
     return _irc_client
 
 
+# ---------- ワンクリック更新の進行状況 ----------
+
+_update_progress_lock = threading.Lock()
+_update_progress = {"phase": "idle", "message": ""}
+# phase: idle / downloading / installing / error
+
+
+def set_update_progress(phase, message=""):
+    global _update_progress
+    with _update_progress_lock:
+        _update_progress = {"phase": phase, "message": message}
+
+
+def get_update_progress():
+    with _update_progress_lock:
+        return dict(_update_progress)
+
+
 # ---------- オーバーレイのテスト発火 ----------
 
 import time as _time

@@ -142,6 +142,48 @@ def find_installer(version):
     return path if os.path.exists(path) else None
 
 
+def _find_iscc():
+    """Inno SetupのコンパイラISCC.exeを探す。"""
+    candidates = [
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Inno Setup 6", "ISCC.exe"),
+        os.path.join(os.environ.get("ProgramFiles", ""), "Inno Setup 6", "ISCC.exe"),
+        os.path.join(os.environ.get("ProgramFiles(x86)", ""), "Inno Setup 6", "ISCC.exe"),
+    ]
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+    return None
+
+
+def build_installer(version):
+    """バージョン更新後のコードでインストーラーをビルドする。
+    (先にビルドすると旧バージョン番号のexeができてしまうため、リリース処理の中で行う)"""
+    iscc = _find_iscc()
+    if iscc is None:
+        print("Inno Setupが見つからないため、インストーラーのビルドをスキップします。")
+        print("(winget install JRSoftware.InnoSetup で導入できます)")
+        return None
+
+    try:
+        import PyInstaller  # noqa: F401
+    except ImportError:
+        print("PyInstallerが見つからないため、インストーラーのビルドをスキップします。")
+        print("(pip install pyinstaller で導入できます)")
+        return None
+
+    print("\nインストーラーをビルドしています(1〜2分かかります)...")
+    run([sys.executable, "-m", "PyInstaller", os.path.join("installer", "tokuten.spec"),
+         "--distpath", "dist", "--workpath", "build", "--noconfirm"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    run([iscc, f"/DAppVersion={version}", os.path.join("installer", "setup.iss")],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    path = find_installer(version)
+    if path:
+        print(f"インストーラーを作成しました: {os.path.basename(path)}")
+    return path
+
+
 def load_or_ask_token():
     """github_token.txt があればそれを使う。無ければ入力(コピペ可)を求め、保存するか選べる。"""
     if os.path.exists(TOKEN_PATH):
@@ -200,15 +242,15 @@ def main():
 
     zip_path = build_zip(new_version)
 
-    installer_path = find_installer(new_version)
+    # バージョン更新後のコードでインストーラーを自動ビルドする
+    installer_path = build_installer(new_version)
+    if installer_path is None:
+        # ビルド環境が無い場合、事前に作られたものがあればそれを使う
+        installer_path = find_installer(new_version)
     if installer_path:
-        print(f"インストーラーを検出しました: {os.path.basename(installer_path)}")
+        print(f"リリースに添付するインストーラー: {os.path.basename(installer_path)}")
     else:
-        print(
-            "\nインストーラー(exe版)が見つかりません。"
-            "build_installer.bat を先に実行すると、インストーラーも一緒に公開できます。"
-            "\nソースZIPのみでリリースを続けます。"
-        )
+        print("インストーラーなしで続行します(ソースZIPのみ添付)。")
 
     token = load_or_ask_token()
     if not token:

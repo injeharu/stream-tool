@@ -103,12 +103,9 @@ python tools/replay.py tests/sample_lines.txt
 | ファイル | 用途 |
 |---|---|
 | `commit.bat` | 変更をコミットしてGitHubへプッシュするだけ |
-| `build_installer.bat` | PyInstallerでexe化し、Inno Setupでインストーラー(`dist_installer\TokutenDaicho-Setup-vX.Y.Z.exe`)を作成 |
-| `release.bat` | バージョンを上げて、コミット・プッシュ・GitHubリリース作成・配布ZIP添付まで一括実行 |
+| `release.bat` | **これ1つでリリース完了**: バージョン更新→インストーラー自動ビルド→コミット・プッシュ→GitHubリリース作成→ZIP+インストーラー添付 |
+| `build_installer.bat` | インストーラーだけ作りたいとき(直渡し用など) |
 | `tools\make_icon.py` | アプリアイコン(exe用・ファビコン)を生成し直す |
-
-**リリース手順**: `build_installer.bat` → `release.bat` の順に実行してください。
-先にインストーラーを作っておくと、リリースに自動で添付されます。
 
 インストーラーのビルドには [Inno Setup 6](https://jrsoftware.org/isdl.php)(無料)が必要です。
 `winget install JRSoftware.InnoSetup` でも導入できます。
@@ -136,3 +133,8 @@ python tools/replay.py tests/sample_lines.txt
 - 視聴者データ・バックアップは、**配布物にもGitHubにも一切含まれません。**
 - チャンネルごとにデータは分かれて保存されるため、監視先を切り替えても混ざりません。
 - 外部への通信は「Twitchチャットの受信」と「新バージョンの有無の確認」のみです。
+
+## 免責
+
+本ツールは個人が開発した**非公式ツール**であり、Twitch Interactive, Inc. とは一切関係ありません。
+Twitchは Twitch Interactive, Inc. の商標です。
