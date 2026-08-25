@@ -191,11 +191,40 @@ def _watch_blocked_install(fail_marker, wait_seconds=60):
     state.set_update_progress("error", message)
 
 
+def smart_app_control_on():
+    """スマートアプリコントロール(SAC)が有効(強制モード)かどうか。
+
+    SACが有効なPCでは、署名のないこのアプリのインストーラーは実行できず、
+    SmartScreenと違って「詳細情報→実行」の抜け道も無い。
+    無駄な更新試行をさせないため、事前に検出して正直に案内する。"""
+    if sys.platform != "win32":
+        return False
+    try:
+        import winreg
+        with winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\CI\Policy"
+        ) as key:
+            value, _ = winreg.QueryValueEx(key, "VerifiedAndReputablePolicyState")
+        return value == 1  # 0=オフ, 1=有効, 2=評価モード(ブロックはしない)
+    except OSError:
+        return False
+
+
 def start_one_click_update():
     """ワンクリック更新を開始する。exe版でのみ使用可能。"""
     if not config.IS_FROZEN:
         return False
     if state.get_update_progress()["phase"] in ("downloading", "installing"):
         return True  # すでに進行中
+
+    if smart_app_control_on():
+        state.set_update_progress(
+            "error",
+            "お使いのPCは「スマートアプリコントロール」が有効なため、署名のない"
+            "このアプリは自動でも手動でも更新できません。今のバージョンのまま使い続けるか、"
+            "READMEの「更新がWindowsにブロックされたとき」をご覧ください",
+        )
+        return True
+
     threading.Thread(target=_run_update, daemon=True).start()
     return True
