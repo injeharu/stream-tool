@@ -42,6 +42,11 @@ RANKING_TOP_N = 20
 
 APP_VERSION = "1.3.8"
 GITHUB_REPO = "injeharu/stream-tool"  # owner/repo(更新確認とリリース作成の両方で使用)
+
+# Twitch連携(任意機能)用のクライアントID。
+# Twitchの仕様上これは公開情報で、秘密にする必要がない値
+# (パスワードにあたるクライアントシークレットは使わない方式のため)。
+TWITCH_CLIENT_ID = "fno42ok80lvglhtyz3uf6pnaiurun5"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 # 起動時に1回+この間隔ごとに新バージョンを確認する
 UPDATE_CHECK_INTERVAL_SECONDS = 4 * 60 * 60

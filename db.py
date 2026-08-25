@@ -148,6 +148,44 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+
+-- Twitch連携で取得したサブスクライバー名簿。
+-- チャットからは分からない「今サブスクしている人が誰か」を保持する。
+-- 継続月数はTwitchのAPIに存在しないため、そちらは従来どおりチャットと手入力で管理する。
+CREATE TABLE IF NOT EXISTS twitch_subscribers (
+    channel TEXT NOT NULL,
+    login TEXT NOT NULL,
+    display_name TEXT,
+    tier TEXT,
+    is_gift INTEGER DEFAULT 0,
+    gifter_login TEXT,
+    gifter_name TEXT,
+    plan_name TEXT,
+    synced_at TEXT,
+    PRIMARY KEY (channel, login)
+);
+
+-- Twitch連携で取得したフォロワー一覧(フォロー日時つき)
+CREATE TABLE IF NOT EXISTS twitch_followers (
+    channel TEXT NOT NULL,
+    login TEXT NOT NULL,
+    display_name TEXT,
+    followed_at TEXT,
+    synced_at TEXT,
+    PRIMARY KEY (channel, login)
+);
+
+-- Twitch公式のビッツ支援ランキング。
+-- チャット監視では起動中のCheerしか拾えないが、こちらは過去分を含む総額。
+CREATE TABLE IF NOT EXISTS twitch_bits (
+    channel TEXT NOT NULL,
+    login TEXT NOT NULL,
+    display_name TEXT,
+    rank INTEGER,
+    score INTEGER,
+    synced_at TEXT,
+    PRIMARY KEY (channel, login)
+);
 """
 
 
@@ -724,6 +762,204 @@ def effective_cumulative(cumulative_months, base_months):
 
 def is_notify_enabled():
     return get_setting("notify_enabled", "1") == "1"
+
+
+# ---------- Twitch連携で取得したデータ ----------
+
+def replace_twitch_subscribers(channel, rows):
+    """サブスクライバー名簿を丸ごと入れ替える(解約した人が残らないように)。"""
+    conn = get_connection()
+    now = _now()
+    with _lock:
+        conn.execute("DELETE FROM twitch_subscribers WHERE channel=?", (channel,))
+        conn.executemany(
+            """
+            INSERT INTO twitch_subscribers
+                (channel, login, display_name, tier, is_gift, gifter_login, gifter_name, plan_name, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    channel,
+                    (r.get("user_login") or "").lower(),
+                    r.get("user_name") or r.get("user_login"),
+                    r.get("tier"),
+                    1 if r.get("is_gift") else 0,
+                    (r.get("gifter_login") or "").lower(),
+                    r.get("gifter_name") or "",
+                    r.get("plan_name") or "",
+                    now,
+                )
+                for r in rows
+                if r.get("user_login")
+            ],
+        )
+        conn.commit()
+    set_setting("twitch_subs_synced_at", now)
+
+
+def replace_twitch_followers(channel, rows):
+    conn = get_connection()
+    now = _now()
+    with _lock:
+        conn.execute("DELETE FROM twitch_followers WHERE channel=?", (channel,))
+        conn.executemany(
+            """
+            INSERT INTO twitch_followers (channel, login, display_name, followed_at, synced_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    channel,
+                    (r.get("user_login") or "").lower(),
+                    r.get("user_name") or r.get("user_login"),
+                    r.get("followed_at") or "",
+                    now,
+                )
+                for r in rows
+                if r.get("user_login")
+            ],
+        )
+        conn.commit()
+    set_setting("twitch_followers_synced_at", now)
+
+
+def replace_twitch_bits(channel, rows):
+    conn = get_connection()
+    now = _now()
+    with _lock:
+        conn.execute("DELETE FROM twitch_bits WHERE channel=?", (channel,))
+        conn.executemany(
+            """
+            INSERT INTO twitch_bits (channel, login, display_name, rank, score, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    channel,
+                    (r.get("user_login") or "").lower(),
+                    r.get("user_name") or r.get("user_login"),
+                    r.get("rank"),
+                    r.get("score"),
+                    now,
+                )
+                for r in rows
+                if r.get("user_login")
+            ],
+        )
+        conn.commit()
+    set_setting("twitch_bits_synced_at", now)
+
+
+def list_twitch_bits(limit=None, offset=0):
+    sql = """
+        SELECT b.login, COALESCE(v.custom_name, b.display_name) AS display_name,
+               b.rank, b.score
+        FROM twitch_bits b
+        LEFT JOIN viewers v ON v.channel = b.channel AND v.login = b.login
+        WHERE b.channel = ?
+        ORDER BY b.rank ASC
+    """
+    params = [current_channel()]
+    if limit is not None:
+        sql += " LIMIT ? OFFSET ?"
+        params += [limit, offset]
+    return _fetchall(sql, tuple(params))
+
+
+def count_twitch_bits():
+    return _fetchone(
+        "SELECT COUNT(*) AS c FROM twitch_bits WHERE channel=?", (current_channel(),)
+    )["c"]
+
+
+def list_twitch_followers(limit=None, offset=0):
+    sql = """
+        SELECT f.login, COALESCE(v.custom_name, f.display_name) AS display_name,
+               f.followed_at,
+               CASE WHEN s.login IS NOT NULL THEN 1 ELSE 0 END AS is_subscriber
+        FROM twitch_followers f
+        LEFT JOIN viewers v ON v.channel = f.channel AND v.login = f.login
+        LEFT JOIN twitch_subscribers s ON s.channel = f.channel AND s.login = f.login
+        WHERE f.channel = ?
+        ORDER BY f.followed_at DESC
+    """
+    params = [current_channel()]
+    if limit is not None:
+        sql += " LIMIT ? OFFSET ?"
+        params += [limit, offset]
+    return _fetchall(sql, tuple(params))
+
+
+def get_twitch_goals():
+    raw = get_setting("twitch_goals", "")
+    if not raw:
+        return []
+    try:
+        return json.loads(raw)
+    except (ValueError, TypeError):
+        return []
+
+
+def list_twitch_subscribers(limit=None, offset=0):
+    """連携で取得した名簿。チャットから分かっている月数も一緒に表示する。"""
+    sql = """
+        SELECT s.login,
+               COALESCE(v.custom_name, s.display_name) AS display_name,
+               s.tier, s.is_gift, s.gifter_name, s.plan_name,
+               st.cumulative_months, st.streak_months,
+               f.followed_at
+        FROM twitch_subscribers s
+        LEFT JOIN viewers v ON v.channel = s.channel AND v.login = s.login
+        LEFT JOIN sub_state st ON st.channel = s.channel AND st.login = s.login
+        LEFT JOIN twitch_followers f ON f.channel = s.channel AND f.login = s.login
+        WHERE s.channel = ?
+        ORDER BY st.cumulative_months DESC NULLS LAST, s.tier DESC, s.display_name COLLATE NOCASE
+    """
+    params = [current_channel()]
+    if limit is not None:
+        sql += " LIMIT ? OFFSET ?"
+        params += [limit, offset]
+    return _fetchall(sql, tuple(params))
+
+
+def count_twitch_subscribers():
+    return _fetchone(
+        "SELECT COUNT(*) AS c FROM twitch_subscribers WHERE channel=?", (current_channel(),)
+    )["c"]
+
+
+def twitch_subscriber_stats():
+    """名簿の内訳(ティア別・ギフト数)。"""
+    channel = current_channel()
+    rows = _fetchall(
+        "SELECT tier, COUNT(*) AS c FROM twitch_subscribers WHERE channel=? GROUP BY tier",
+        (channel,),
+    )
+    gifts = _fetchone(
+        "SELECT COUNT(*) AS c FROM twitch_subscribers WHERE channel=? AND is_gift=1", (channel,)
+    )["c"]
+    # 月数が分かっていない人(チャットで共有していない人)の数
+    unknown = _fetchone(
+        """
+        SELECT COUNT(*) AS c FROM twitch_subscribers s
+        LEFT JOIN sub_state st ON st.channel = s.channel AND st.login = s.login
+        WHERE s.channel = ? AND st.cumulative_months IS NULL
+        """,
+        (channel,),
+    )["c"]
+    return {
+        "by_tier": {r["tier"]: r["c"] for r in rows},
+        "gift_count": gifts,
+        "unknown_months": unknown,
+        "total": count_twitch_subscribers(),
+    }
+
+
+def count_twitch_followers():
+    return _fetchone(
+        "SELECT COUNT(*) AS c FROM twitch_followers WHERE channel=?", (current_channel(),)
+    )["c"]
 
 
 def is_shared_chat_ignored():

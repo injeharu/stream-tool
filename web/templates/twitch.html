@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block title %}Twitch連携 - 配信サポートツール{% endblock %}
+{% block heading %}🔗 Twitch連携{% endblock %}
+{% block content %}
+
+{% if not linked %}
+<div class="panel">
+  <h2>Twitchと連携すると分かること</h2>
+  <p class="hint">
+    連携しなくてもツールの全機能は使えます。連携すると、チャットだけでは分からない情報が追加で見られます。
+  </p>
+  <ul style="font-size:0.9rem; line-height:1.9;">
+    <li><b>サブスクしている人の名簿</b> — チャットで共有しない人も含めて全員分かります</li>
+    <li><b>ギフトで貰った人と贈り主</b> — 誰が誰にプレゼントしたか</li>
+    <li><b>ビッツの公式ランキング</b> — ツール導入前の分も含む正確な総額</li>
+    <li><b>フォロワー一覧</b> — いつからフォローしているかも分かります</li>
+    <li><b>配信の目標</b> — フォロワー目標などの進捗</li>
+  </ul>
+  <p class="hint">
+    ※ サブスクの<b>継続月数はTwitchが公開していない</b>ため、連携しても取得できません。
+    月数は今までどおりチャットからの記録と手入力で管理します。<br>
+    ※ サブスク名簿はアフィリエイト/パートナーのみ取得できます。
+  </p>
+
+  <div id="auth-start">
+    <button type="button" class="btn btn-primary" style="width:auto;" onclick="startAuth()">🔗 Twitchと連携する</button>
+  </div>
+
+  <div id="auth-code" style="display:none; margin-top:16px;">
+    <div class="panel" style="background:var(--accent-soft); border-color:var(--accent);">
+      <p style="margin:0 0 10px;">下のコードを、開いたTwitchのページに入力して「許可」を押してください。</p>
+      <div style="font-size:2rem; font-weight:800; letter-spacing:0.3em; color:var(--accent-bright); text-align:center; padding:10px 0;"
+           id="user-code"></div>
+      <div class="form-row" style="justify-content:center;">
+        <a id="verify-link" href="#" target="_blank" rel="noopener" class="btn btn-primary" style="width:auto;">
+          Twitchのページを開く
+        </a>
+      </div>
+      <p class="hint" style="text-align:center; margin:10px 0 0;">
+        承認されるとこの画面が自動で切り替わります(<span id="auth-wait">待機中...</span>)
+      </p>
+    </div>
+  </div>
+</div>
+
+{% else %}
+
+<div class="form-row">
+  <button type="button" class="btn btn-primary" style="width:auto;" onclick="syncNow()">🔄 最新の情報を取り込む</button>
+  <span id="sync-result" style="font-size:0.85rem;"></span>
+  {% if synced_at %}
+  <span class="hint" style="margin:0;">前回の取り込み: {{ synced_at }}</span>
+  {% endif %}
+</div>
+
+{% if goals %}
+<div class="tiles">
+  {% for g in goals %}
+  <div class="tile">
+    <div class="tile-value">{{ g.current_amount }}<span style="font-size:1rem; color:var(--text-dim);">/{{ g.target_amount }}</span></div>
+    <div class="tile-label">
+      {% if g.type == 'follower' %}フォロワー目標
+      {% elif g.type == 'subscription' %}サブスク目標
+      {% elif g.type == 'new_subscription' %}新規サブスク目標
+      {% elif g.type == 'subscription_count' %}サブスク数目標
+      {% elif g.type == 'new_subscription_count' %}新規サブスク数目標
+      {% else %}{{ g.type }}{% endif %}
+      {% if g.description %} — {{ g.description }}{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="tiles">
+  <div class="tile">
+    <div class="tile-value">{{ stats.total }}</div>
+    <div class="tile-label">サブスクしている人</div>
+  </div>
+  <div class="tile">
+    <div class="tile-value">{{ stats.gift_count }}</div>
+    <div class="tile-label">うちギフトで貰った人</div>
+  </div>
+  <div class="tile">
+    <div class="tile-value">{{ stats.unknown_months }}</div>
+    <div class="tile-label">月数が未確認の人</div>
+  </div>
+  <div class="tile">
+    <div class="tile-value">{{ follower_count }}</div>
+    <div class="tile-label">フォロワー</div>
+  </div>
+</div>
+
+<div class="form-row">
+  <a href="{{ url_for('main.twitch_page', tab='subscribers') }}"
+     class="btn {{ 'btn-primary' if tab == 'subscribers' else 'btn-ghost' }}" style="width:auto;">👑 サブスク名簿 ({{ stats.total }})</a>
+  <a href="{{ url_for('main.twitch_page', tab='followers') }}"
+     class="btn {{ 'btn-primary' if tab == 'followers' else 'btn-ghost' }}" style="width:auto;">💜 フォロワー ({{ follower_count }})</a>
+  <a href="{{ url_for('main.twitch_page', tab='bits') }}"
+     class="btn {{ 'btn-primary' if tab == 'bits' else 'btn-ghost' }}" style="width:auto;">💎 ビッツ公式 ({{ bits_count }})</a>
+</div>
+
+{% macro pager() %}
+{% if total_pages > 1 %}
+<div class="form-row" style="margin: 10px 0; flex-wrap: wrap;">
+  {% if page > 1 %}
+  <a href="{{ url_for('main.twitch_page', tab=tab, page=page-1) }}" class="btn btn-ghost btn-sm">← 前へ</a>
+  {% endif %}
+  {% for p in page_window %}
+    {% if p is none %}
+    <span style="color:var(--text-dim); padding:0 4px;">…</span>
+    {% elif p == page %}
+    <span class="btn btn-primary btn-sm" style="cursor:default;">{{ p }}</span>
+    {% else %}
+    <a href="{{ url_for('main.twitch_page', tab=tab, page=p) }}" class="btn btn-ghost btn-sm">{{ p }}</a>
+    {% endif %}
+  {% endfor %}
+  {% if page < total_pages %}
+  <a href="{{ url_for('main.twitch_page', tab=tab, page=page+1) }}" class="btn btn-ghost btn-sm">次へ →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% if rows %}
+{{ pager() }}
+<table>
+  {% if tab == 'subscribers' %}
+  <thead>
+    <tr>
+      <th>視聴者</th><th>ティア</th><th>ギフト</th><th>通算月数</th><th>連続月数</th><th>フォロー日</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.display_name or r.login }}
+        <span style="color:var(--text-dim); font-size:0.75rem;">@{{ r.login }}</span>
+      </td>
+      <td><span class="tier-badge">{{ tier_labels.get(r.tier, r.tier) }}</span></td>
+      <td>
+        {% if r.is_gift %}
+        🎁 {{ r.gifter_name or '不明' }} さんから
+        {% else %}
+        <span style="color:var(--text-dim);">自分で</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if r.cumulative_months %}{{ r.cumulative_months }}ヶ月
+        {% else %}<span style="color:var(--text-dim);">未確認</span>{% endif %}
+      </td>
+      <td>{{ r.streak_months if r.streak_months else '-' }}</td>
+      <td style="font-size:0.8rem; color:var(--text-dim);">{{ (r.followed_at or '')[:10] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+
+  {% elif tab == 'followers' %}
+  <thead>
+    <tr><th>視聴者</th><th>フォロー日</th><th>サブスク</th></tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.display_name or r.login }}
+        <span style="color:var(--text-dim); font-size:0.75rem;">@{{ r.login }}</span>
+      </td>
+      <td>{{ (r.followed_at or '')[:10] }}</td>
+      <td>{% if r.is_subscriber %}👑 あり{% else %}<span style="color:var(--text-dim);">-</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+
+  {% else %}
+  <thead>
+    <tr><th style="width:60px;">順位</th><th>視聴者</th><th>ビッツ(公式集計)</th></tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>
+        {% if r.rank == 1 %}🥇{% elif r.rank == 2 %}🥈{% elif r.rank == 3 %}🥉{% else %}{{ r.rank }}{% endif %}
+      </td>
+      <td>{{ r.display_name or r.login }}</td>
+      <td>{{ r.score }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  {% endif %}
+</table>
+{{ pager() }}
+{% else %}
+<div class="empty-state">
+  データがありません。「🔄 最新の情報を取り込む」を押してください。
+</div>
+{% endif %}
+
+<div class="form-row" style="margin-top:20px;">
+  <form method="post" action="{{ url_for('main.twitch_unlink') }}"
+        onsubmit="return confirm('Twitchとの連携を解除しますか?\n(取り込んだ名簿も表示されなくなります。チャットからの記録は残ります)');">
+    <button type="submit" class="btn btn-ghost btn-sm">連携を解除する</button>
+  </form>
+</div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+  function startAuth() {
+    fetch("/twitch/auth/start", { method: "POST" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) { alert(d.message || "連携を開始できませんでした"); return; }
+        document.getElementById("auth-start").style.display = "none";
+        document.getElementById("auth-code").style.display = "block";
+        document.getElementById("user-code").textContent = d.user_code;
+        var link = document.getElementById("verify-link");
+        link.href = d.verification_uri;
+        window.open(d.verification_uri, "_blank");
+
+        /* 承認されたら自動で画面を切り替える */
+        var timer = setInterval(function () {
+          fetch("/api/twitch/status", { cache: "no-store" })
+            .then(function (r) { return r.json(); })
+            .then(function (s) {
+              if (s.linked) { clearInterval(timer); location.reload(); }
+              else if (!s.authenticating) {
+                clearInterval(timer);
+                document.getElementById("auth-wait").textContent = "時間切れです。もう一度お試しください";
+              }
+            })
+            .catch(function () {});
+        }, 3000);
+      })
+      .catch(function () { alert("連携を開始できませんでした"); });
+  }
+
+  function syncNow() {
+    var el = document.getElementById("sync-result");
+    el.style.color = "var(--text-dim)";
+    el.textContent = "取り込んでいます...";
+    fetch("/twitch/sync", { method: "POST" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) {
+          el.style.color = "var(--danger)";
+          el.textContent = d.message || "取り込みに失敗しました";
+          return;
+        }
+        el.style.color = "var(--success)";
+        el.textContent = "✅ サブスク" + d.subscribers + "件 / フォロワー" + d.followers +
+                         "件 / ビッツ" + d.bits + "件を取り込みました";
+        setTimeout(function () { location.reload(); }, 1500);
+      })
+      .catch(function () {
+        el.style.color = "var(--danger)";
+        el.textContent = "取り込みに失敗しました";
+      });
+  }
+</script>
+{% endblock %}

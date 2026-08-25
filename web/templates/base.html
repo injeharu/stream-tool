@@ -24,6 +24,7 @@
   <a data-tour="nav-subscribers" href="{{ url_for('main.subscribers') }}" class="{{ 'active' if active == 'subscribers' }}">👥 サブスク一覧</a>
   <a data-tour="nav-forecast" href="{{ url_for('main.forecast') }}" class="{{ 'active' if active == 'forecast' }}">🔮 到達予定</a>
   <a data-tour="nav-ranking" href="{{ url_for('main.ranking_page') }}" class="{{ 'active' if active == 'ranking' }}">🏆 ランキング</a>
+  <a href="{{ url_for('main.twitch_page') }}" class="{{ 'active' if active == 'twitch' }}">🔗 Twitch連携</a>
   <a data-tour="nav-settings" href="{{ url_for('main.settings') }}" class="{{ 'active' if active == 'settings' }}">⚙ 設定</a>
   <div style="flex:1;"></div>
   {% if available_update %}

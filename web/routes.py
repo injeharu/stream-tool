@@ -18,6 +18,7 @@ import db
 import state
 import milestone
 import ranking
+import twitch_api
 import updater
 
 bp = Blueprint("main", __name__)
@@ -402,6 +403,92 @@ def ranking_adjust():
     db.upsert_viewer(channel, login, display_name or login)
     db.set_adjustment(channel, login, kind, amount)
     return redirect(url_for("main.ranking_page", tab=kind, saved=1))
+
+
+# ---------- Twitch連携(任意機能) ----------
+
+@bp.route("/twitch/auth/start", methods=["POST"])
+def twitch_auth_start():
+    """連携を開始し、利用者に見せるコードを返す。"""
+    try:
+        info = twitch_api.start_device_auth()
+        return jsonify({"ok": True, **info})
+    except twitch_api.TwitchApiError as e:
+        return jsonify({"ok": False, "message": str(e)})
+
+
+@bp.route("/api/twitch/status")
+def api_twitch_status():
+    """連携の状態(画面が待機中かどうかを知るために使う)。"""
+    return jsonify(
+        {
+            "linked": twitch_api.is_linked(),
+            "authenticating": twitch_api.is_authenticating(),
+            "login": db.get_setting("twitch_user_login", ""),
+        }
+    )
+
+
+@bp.route("/twitch/unlink", methods=["POST"])
+def twitch_unlink():
+    twitch_api.unlink()
+    return redirect(url_for("main.settings", saved=1))
+
+
+@bp.route("/twitch/sync", methods=["POST"])
+def twitch_sync():
+    """連携で取れる情報をまとめて取り込む。"""
+    try:
+        result = twitch_api.sync_all()
+        return jsonify({"ok": True, **result})
+    except twitch_api.TwitchApiError as e:
+        return jsonify({"ok": False, "message": str(e)})
+
+
+@bp.route("/twitch")
+def twitch_page():
+    """連携で取得した情報の一覧画面。"""
+    if not twitch_api.is_linked():
+        return render_template("twitch.html", linked=False, active="twitch")
+
+    page = max(request.args.get("page", 1, type=int) or 1, 1)
+    tab = request.args.get("tab", "subscribers")
+    if tab not in ("subscribers", "followers", "bits"):
+        tab = "subscribers"
+
+    page_size = config.RANKING_TOP_N
+    offset = (page - 1) * page_size
+
+    if tab == "followers":
+        rows = db.list_twitch_followers(limit=page_size, offset=offset)
+        total = db.count_twitch_followers()
+    elif tab == "bits":
+        rows = db.list_twitch_bits(limit=page_size, offset=offset)
+        total = db.count_twitch_bits()
+    else:
+        rows = db.list_twitch_subscribers(limit=page_size, offset=offset)
+        total = db.count_twitch_subscribers()
+
+    total_pages = max((total + page_size - 1) // page_size, 1)
+
+    return render_template(
+        "twitch.html",
+        linked=True,
+        tab=tab,
+        rows=rows,
+        total=total,
+        stats=db.twitch_subscriber_stats(),
+        follower_count=db.count_twitch_followers(),
+        bits_count=db.count_twitch_bits(),
+        goals=db.get_twitch_goals(),
+        tier_labels=config.TIER_LABELS,
+        synced_at=db.get_setting("twitch_subs_synced_at", ""),
+        page=page,
+        total_pages=total_pages,
+        page_window=_page_window(page, total_pages),
+        rank_offset=offset,
+        active="twitch",
+    )
 
 
 @bp.route("/settings", methods=["GET", "POST"])
