@@ -803,7 +803,12 @@ def effective_cumulative(cumulative_months, base_months):
 
 
 def is_notify_enabled():
-    return get_setting("notify_enabled", "1") == "1"
+    """Windowsの通知を出すか。既定はOFF。
+
+    配信者はゲームを全画面で遊びながら配信することが多く、通知が出ると
+    画面が切り替わってカーソルが引っ張られてしまうため、既定では出さない。
+    到達に気づきたい場合は、OBSオーバーレイの祝福バナーを使うと配信を邪魔しない。"""
+    return get_setting("notify_enabled", "0") == "1"
 
 
 # ---------- Twitch連携で取得したデータ ----------
@@ -1041,8 +1046,11 @@ def set_sound_volume(value):
 
 
 def is_notify_persistent():
-    """通知を「閉じるまで消さない」で出すか。既定はON(見逃し防止)。"""
-    return get_setting("notify_persistent", "1") == "1"
+    """通知を「閉じるまで消さない」で出すか。既定はOFF。
+
+    この方式はWindowsから目覚ましと同じ扱いを受けるため、全画面のゲーム中でも
+    割り込んで表示され、カーソルが引っ張られる。見逃し防止より実害が大きいため既定は切る。"""
+    return get_setting("notify_persistent", "0") == "1"
 
 
 def set_notify_persistent(enabled):

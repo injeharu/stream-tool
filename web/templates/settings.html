@@ -122,11 +122,21 @@
     <input type="checkbox" name="notify_enabled" {% if notify_enabled %}checked{% endif %}>
     <span style="font-size:0.85rem; color:var(--text-dim);">節目到達をWindowsの通知でお知らせ(クリックで管理画面が開きます)</span>
   </div>
+  <p class="hint">
+    ⚠ <b>ゲームを全画面で遊びながら配信する場合はOFFのままを推奨します。</b>
+    通知が出た瞬間に画面が切り替わり、カーソルが引っ張られることがあります。
+    到達に気づきたい場合は、下の「🖥 OBS連携」の祝福バナーを使うと配信を邪魔しません
+    (画面上には常に「📦 特典待ち」として残ります)。
+  </p>
   <div class="form-row">
     <label>通知を消えないように</label>
     <input type="checkbox" name="notify_persistent" {% if notify_persistent %}checked{% endif %}>
-    <span style="font-size:0.85rem; color:var(--text-dim);">ONにすると、自分で閉じるまで通知が画面に残ります(配信中の見逃し防止)</span>
+    <span style="font-size:0.85rem; color:var(--text-dim);">自分で閉じるまで通知が画面に残ります(見逃し防止)</span>
   </div>
+  <p class="hint">
+    ⚠ こちらはWindowsから<b>目覚ましと同じ扱い</b>を受けるため、
+    全画面のゲーム中でも割り込んで表示されます。ゲーム配信ではONにしないでください。
+  </p>
   <div class="form-row">
     <label>PC起動時に自動起動</label>
     {% if autostart_available %}
