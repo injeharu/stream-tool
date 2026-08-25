@@ -138,6 +138,8 @@ def _run_update():
         with open(bat_path, "w", encoding="cp932", errors="strict") as f:
             f.write("@echo off\r\n")
             f.write(f'"{dest}" /SILENT /NORESTART\r\n')
+            # ファイル差し替え直後の起動失敗を避けるため少し待ってから再起動する
+            f.write("timeout /t 2 /nobreak >nul\r\n")
             f.write(f'start "" "{restart_target}"\r\n')
             f.write('del "%~f0"\r\n')
 

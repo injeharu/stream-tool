@@ -19,14 +19,14 @@
   }
 
   function tryRecover() {
-    /* 更新による再起動を待ち、復帰したらリロードする */
+    /* 更新による再起動を待ち、復帰したら「見ていたページのまま」開き直す */
     var timer = setInterval(function () {
       fetch("/api/alive", { cache: "no-store" })
         .then(function (r) { return r.json(); })
         .then(function () {
           clearInterval(timer);
           sessionStorage.removeItem("tdUpdating");
-          location.href = "/";
+          location.reload();
         })
         .catch(function () {});
     }, 2000);
