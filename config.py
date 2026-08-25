@@ -40,7 +40,7 @@ TIER_LABELS = {"1000": "Tier 1", "2000": "Tier 2", "3000": "Tier 3", "Prime": "P
 
 RANKING_TOP_N = 20
 
-APP_VERSION = "1.4.2"
+APP_VERSION = "1.4.3"
 GITHUB_REPO = "injeharu/stream-tool"  # owner/repo(更新確認とリリース作成の両方で使用)
 
 # Twitch連携(任意機能)用のクライアントID。
