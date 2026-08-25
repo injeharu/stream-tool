@@ -29,7 +29,7 @@
   <div style="flex:1;"></div>
   {% if available_update %}
     {% if is_frozen %}
-    <a href="#" id="update-badge" class="update-badge"
+    <a href="#" id="update-badge" class="update-badge" data-release-url="{{ available_update.url }}"
        onclick="startOneClickUpdate('{{ available_update.version }}'); return false;">
       🔄 更新があります v{{ available_update.version }}
     </a>

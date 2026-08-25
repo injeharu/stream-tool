@@ -93,8 +93,22 @@
               if (p.phase === "error") {
                 clearInterval(poll);
                 sessionStorage.removeItem("tdUpdating");
-                alert(p.message + "\nリリースページから手動で更新してください。");
-                if (badge) badge.textContent = "🔄 更新があります";
+                var manualUrl = badge && badge.getAttribute("data-release-url");
+                alert(p.message + "\n\n左下のボタンからダウンロードページを開けます。\n" +
+                      "ダウンロードしたインストーラーを実行するだけで更新できます\n" +
+                      "(「WindowsによってPCが保護されました」が出たら「詳細情報」→「実行」)。");
+                if (badge) {
+                  if (manualUrl) {
+                    /* ワンクリック更新が使えないので、手動ダウンロードへの入口に切り替える */
+                    badge.textContent = "📥 手動で更新(ダウンロードページを開く)";
+                    badge.onclick = null;
+                    badge.href = manualUrl;
+                    badge.target = "_blank";
+                    badge.rel = "noopener";
+                  } else {
+                    badge.textContent = "🔄 更新があります";
+                  }
+                }
               }
             })
             .catch(function () { clearInterval(poll); });  /* サーバー停止=インストール開始 */

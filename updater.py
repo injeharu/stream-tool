@@ -141,11 +141,19 @@ def _run_update():
         # (cmd /c に引用符入りの1行を渡す方式は引用符の解釈で壊れるため、batファイル経由にする)
         restart_target = sys.executable
         bat_path = os.path.join(tempfile.gettempdir(), "tokuten_update.bat")
+        # インストーラーが実行できなかったとき(SmartScreen等のブロック)に印を残すファイル
+        fail_marker = os.path.join(tempfile.gettempdir(), "tokuten_update_failed.txt")
+        try:
+            os.remove(fail_marker)
+        except OSError:
+            pass
         # 文字化けしたパスで実行してしまわないよう、変換できない文字があれば素直に失敗させる
         with open(bat_path, "w", encoding="cp932", errors="strict") as f:
             f.write("@echo off\r\n")
             # VERYSILENT: インストーラーの進捗ウィンドウも出さない(画面は更新中表示のまま)
             f.write(f'"{dest}" /VERYSILENT /NORESTART /SUPPRESSMSGBOXES\r\n')
+            # 実行がブロックされた・失敗した場合は印を残す(本体側の見張りが検知する)
+            f.write(f'if errorlevel 1 echo blocked > "{fail_marker}"\r\n')
             # ファイル差し替え直後の起動失敗を避けるため少し待ってから再起動する
             # (timeoutコマンドはコンソールが無いと動かないため、ping方式で約2秒待つ)
             f.write("ping -n 3 127.0.0.1 >nul\r\n")
@@ -158,8 +166,29 @@ def _run_update():
         # (DETACHEDだとbat内のpingが一瞬黒い窓を出してしまう)
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         subprocess.Popen(["cmd", "/c", bat_path], creationflags=flags, close_fds=True)
+
+        # 見張り: インストールが成功すればこのプロセスは終了させられる。
+        # 一定時間たっても生きている=インストーラーが動けなかった(ブロック等)ということなので、
+        # 「インストール中」のまま固まらないようエラーに切り替えて、再試行できる状態に戻す。
+        threading.Thread(target=_watch_blocked_install, args=(fail_marker,), daemon=True).start()
     except Exception as e:
         state.set_update_progress("error", f"更新に失敗しました: {e}")
+
+
+def _watch_blocked_install(fail_marker, wait_seconds=60):
+    time.sleep(wait_seconds)
+    # ここに到達した=まだ生きている=更新は行われていない
+    if os.path.exists(fail_marker):
+        try:
+            os.remove(fail_marker)
+        except OSError:
+            pass
+        message = ("インストーラーの実行がWindowsにブロックされたようです(署名のない個人開発アプリのため)。"
+                   "手動でインストールすれば更新できます。データは消えません")
+    else:
+        message = ("更新が完了しませんでした(セキュリティソフトにブロックされた可能性があります)。"
+                   "手動でインストールすれば更新できます。データは消えません")
+    state.set_update_progress("error", message)
 
 
 def start_one_click_update():
