@@ -87,6 +87,16 @@
     <input type="number" name="streak_interval" class="num-sm" min="1" value="{{ streak_interval }}" placeholder="空欄=なし">
   </div>
 
+  <div class="form-row">
+    <label>コラボ配信中</label>
+    <input type="checkbox" name="ignore_shared_chat" {% if ignore_shared_chat %}checked{% endif %}>
+    <span style="font-size:0.85rem; color:var(--text-dim);">統合チャット中、相方のチャンネルのコメントやサブスクは記録しない</span>
+  </div>
+  <p class="hint">
+    コラボ配信(Stream Together)では相方のチャンネルのチャットも一緒に流れてきます。
+    OFFにすると、それらも自分のチャンネルの記録として数えます。
+  </p>
+
   <div class="form-row" style="align-items:flex-start;">
     <label>対象ティア</label>
     <div>

@@ -13,6 +13,17 @@ class ParsedMessage:
     login: str
     channel: str = ""
 
+    @property
+    def is_from_other_channel(self):
+        """統合チャット(Stream Together)で、別のチャンネルから転送されてきたメッセージか。
+
+        コラボ配信中は相方のチャンネルのコメントやサブスクも流れてくるため、
+        これを自分のチャンネルの記録に混ぜないよう見分ける必要がある。
+        Twitchは転送元が違う場合に source-room-id を付けてくる。"""
+        source = self.tags.get("source-room-id")
+        room = self.tags.get("room-id")
+        return bool(source) and bool(room) and source != room
+
 
 def _unescape_tag_value(value):
     # IRCv3タグのエスケープ解除。\\ を含む1パス処理でないと二重解除で壊れる。

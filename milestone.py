@@ -18,6 +18,11 @@ def handle_usernotice(parsed, notify=True):
     if msg_id not in SUB_EVENT_TYPES:
         return
 
+    # コラボ配信の統合チャットでは相方のチャンネルのサブスクも流れてくるため、
+    # 自分のチャンネルの記録に混ざらないよう除外する
+    if parsed.is_from_other_channel and db.is_shared_chat_ignored():
+        return
+
     login = parsed.login
     channel = parsed.channel
     if not login or not channel:
@@ -128,6 +133,10 @@ def handle_privmsg(parsed):
     login = parsed.login
     channel = parsed.channel
     if not login or not channel:
+        return
+
+    # 統合チャット経由の他チャンネルのコメントは数えない(上記と同じ理由)
+    if parsed.is_from_other_channel and db.is_shared_chat_ignored():
         return
     display_name = parsed.tags.get("display-name", login)
     db.upsert_viewer(channel, login, display_name, seen_message=True)

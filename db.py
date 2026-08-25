@@ -726,6 +726,16 @@ def is_notify_enabled():
     return get_setting("notify_enabled", "1") == "1"
 
 
+def is_shared_chat_ignored():
+    """統合チャット(コラボ配信)で流れてくる他チャンネルのメッセージを無視するか。
+    既定はON(自分のチャンネルの記録に他所の視聴者が混ざらないようにする)。"""
+    return get_setting("ignore_shared_chat", "1") == "1"
+
+
+def set_shared_chat_ignored(enabled):
+    set_setting("ignore_shared_chat", "1" if enabled else "0")
+
+
 def get_custom_sound():
     """オーバーレイの効果音として登録されたファイル名。未設定なら空文字(内蔵音を使う)。"""
     return get_setting("custom_sound", "") or ""

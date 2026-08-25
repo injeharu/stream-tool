@@ -448,6 +448,7 @@ def settings():
 
         db.set_setting("notify_enabled", notify_enabled)
         db.set_notify_persistent(request.form.get("notify_persistent") == "on")
+        db.set_shared_chat_ignored(request.form.get("ignore_shared_chat") == "on")
         db.set_eligible_tiers(eligible_tiers)
         db.set_kind_enabled("cumulative", kind_cumulative)
         db.set_kind_enabled("streak", kind_streak)
@@ -469,6 +470,7 @@ def settings():
         "streak_interval": db.get_interval("streak") or "",
         "notify_enabled": db.is_notify_enabled(),
         "notify_persistent": db.is_notify_persistent(),
+        "ignore_shared_chat": db.is_shared_chat_ignored(),
         "custom_sound": db.get_custom_sound(),
         "sound_volume": db.get_sound_volume(),
         "sound_error": request.args.get("sound_error"),
