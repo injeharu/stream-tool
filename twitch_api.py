@@ -144,8 +144,25 @@ def unlink():
         db.set_setting(key, "")
 
 
+_refresh_lock = threading.Lock()
+
+
 def _refresh_token():
-    """期限切れのトークンを更新する。更新用のトークンは一度きりなので必ず入れ替える。"""
+    """期限切れのトークンを更新する。更新用のトークンは一度きりしか使えないため、
+    同時に2箇所から更新すると片方が必ず失敗する。ロックで一度にひとつだけ実行し、
+    直前に他の処理が更新を終えていたらそれをそのまま使う。"""
+    with _refresh_lock:
+        try:
+            expires_at = int(db.get_setting("twitch_token_expires_at", "0"))
+        except (TypeError, ValueError):
+            expires_at = 0
+        if time.time() < expires_at - 300:
+            return True  # 待っている間に別の処理が更新を済ませていた
+
+        return _refresh_token_locked()
+
+
+def _refresh_token_locked():
     refresh = db.get_setting("twitch_refresh_token", "")
     if not refresh:
         return False

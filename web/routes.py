@@ -419,6 +419,9 @@ def twitch_auth_start():
         return jsonify({"ok": True, **info})
     except twitch_api.TwitchApiError as e:
         return jsonify({"ok": False, "message": str(e)})
+    except Exception:
+        # 想定外の失敗でもエラー画面ではなく通常のメッセージで返す(保険)
+        return jsonify({"ok": False, "message": "連携を開始できませんでした。時間をおいてお試しください"})
 
 
 @bp.route("/api/twitch/status")
@@ -447,6 +450,8 @@ def twitch_sync():
         return jsonify({"ok": True, **result})
     except twitch_api.TwitchApiError as e:
         return jsonify({"ok": False, "message": str(e)})
+    except Exception:
+        return jsonify({"ok": False, "message": "取り込みに失敗しました。時間をおいてお試しください"})
 
 
 @bp.route("/twitch")
@@ -486,6 +491,7 @@ def twitch_page():
         bits_count=db.count_twitch_bits(),
         goals=db.get_twitch_goals(),
         tier_labels=config.TIER_LABELS,
+        linked_login=db.get_setting("twitch_user_login", ""),
         synced_at=db.get_setting("twitch_subs_synced_at", ""),
         page=page,
         total_pages=total_pages,

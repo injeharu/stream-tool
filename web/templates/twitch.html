@@ -45,11 +45,22 @@
 
 {% else %}
 
+{% if linked_login and current_channel and linked_login != current_channel %}
+<div class="panel" style="margin-bottom:16px; border-color:var(--warn);">
+  <p style="margin:0; font-size:0.88rem;">
+    ⚠ 連携しているアカウントは <b>@{{ linked_login }}</b> ですが、いま監視しているチャンネルは
+    <b>#{{ current_channel }}</b> です。ここに表示・取り込みできるのは
+    <b>自分のチャンネル(@{{ linked_login }})の情報だけ</b>です。
+    <a href="{{ url_for('main.settings') }}">設定</a>でチャンネル名を {{ linked_login }} にすると使えます。
+  </p>
+</div>
+{% endif %}
+
 <div class="form-row">
   <button type="button" class="btn btn-primary" style="width:auto;" onclick="syncNow()">🔄 最新の情報を取り込む</button>
   <span id="sync-result" style="font-size:0.85rem;"></span>
   {% if synced_at %}
-  <span class="hint" style="margin:0;">前回の取り込み: {{ synced_at }}</span>
+  <span class="hint" style="margin:0;">前回の取り込み: {{ synced_at[:16]|replace('T', ' ') }}</span>
   {% endif %}
 </div>
 
