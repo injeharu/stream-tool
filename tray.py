@@ -6,8 +6,8 @@ pystrayが使えない環境では何もしない(ツール本体の動作には
 
 import os
 import threading
-import webbrowser
 
+import browser_window
 import config
 
 try:
@@ -36,11 +36,11 @@ def _load_image():
 
 
 def _open_admin(icon=None, item=None):
-    webbrowser.open(ADMIN_URL)
+    browser_window.open_or_focus(ADMIN_URL)
 
 
 def _open_overlay_help(icon=None, item=None):
-    webbrowser.open(f"{ADMIN_URL}/settings")
+    browser_window.open_or_focus(f"{ADMIN_URL}/settings")
 
 
 def _quit(icon, item=None):

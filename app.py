@@ -9,6 +9,7 @@ import sys
 import threading
 import webbrowser
 
+import browser_window
 import config
 import db
 import state
@@ -66,7 +67,7 @@ def main():
     if already_running():
         print("すでに起動しています。管理画面を開きます。")
         notifier.notify_info("すでに起動しています", "特典台帳は起動済みです。管理画面を開きます。", launch=url)
-        webbrowser.open(url)
+        browser_window.open_or_focus(url)
         return
 
     backup_db()
@@ -112,8 +113,8 @@ def main():
     tray.start()
 
     if config.IS_FROZEN:
-        # exe版はコンソールが出ないため、起動時に自動でブラウザを開く
-        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+        # exe版はコンソールが出ないため、起動時に自動で管理画面ウィンドウを開く
+        threading.Timer(1.0, lambda: browser_window.open_or_focus(url)).start()
     app = create_app()
     app.run(host=config.FLASK_HOST, port=config.FLASK_PORT, use_reloader=False)
 

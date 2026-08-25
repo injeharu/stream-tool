@@ -88,6 +88,12 @@ def main():
     )
     print(f"生成: {ico_path}")
 
+    # アプリモード窓のアイコン用(大きいサイズがあるとブラウザがウィンドウアイコンに採用しやすい)
+    for size in (192, 512):
+        png_path = os.path.join(BASE_DIR, "web", "static", f"icon-{size}.png")
+        draw_icon(size).save(png_path, format="PNG")
+        print(f"生成: {png_path}")
+
     favicon_path = os.path.join(BASE_DIR, "web", "static", "favicon.ico")
     images[64].save(
         favicon_path,

@@ -6,6 +6,7 @@ data.db-shm
 data.db.bak
 *.db.bak
 backups/
+browser_profile/
 github_token.txt
 stream-tool-v*.zip
 /dist/
