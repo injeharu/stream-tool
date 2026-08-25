@@ -74,7 +74,7 @@ def main():
             browser_window.open_or_focus(url)
         else:
             print("すでに起動しています。管理画面を開きます。")
-            notifier.notify_info("すでに起動しています", "特典台帳は起動済みです。管理画面を開きます。", launch=url)
+            notifier.notify_info("すでに起動しています", "特典台帳は起動済みです。管理画面を開きます。")
             browser_window.open_or_focus(url)
         return
 
@@ -113,13 +113,12 @@ def main():
 
     if channel:
         print(f"チャンネル「{channel}」を監視しています。")
-        notifier.notify_info("特典台帳を起動しました", f"「{channel}」のチャット監視を開始しました。", launch=url)
+        notifier.notify_info("特典台帳を起動しました", f"「{channel}」のチャット監視を開始しました。")
     else:
         print("チャンネル名が未設定です。設定画面から登録してください。")
         notifier.notify_info(
             "特典台帳を起動しました",
             "チャンネル名が未設定です。設定画面から登録してください。",
-            launch=url,
         )
 
     print(f"管理画面: {url}")

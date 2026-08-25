@@ -144,7 +144,8 @@ def _run_update():
         # 文字化けしたパスで実行してしまわないよう、変換できない文字があれば素直に失敗させる
         with open(bat_path, "w", encoding="cp932", errors="strict") as f:
             f.write("@echo off\r\n")
-            f.write(f'"{dest}" /SILENT /NORESTART\r\n')
+            # VERYSILENT: インストーラーの進捗ウィンドウも出さない(画面は更新中表示のまま)
+            f.write(f'"{dest}" /VERYSILENT /NORESTART /SUPPRESSMSGBOXES\r\n')
             # ファイル差し替え直後の起動失敗を避けるため少し待ってから再起動する
             # (timeoutコマンドはコンソールが無いと動かないため、ping方式で約2秒待つ)
             f.write("ping -n 3 127.0.0.1 >nul\r\n")
