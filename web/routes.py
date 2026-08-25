@@ -448,7 +448,6 @@ def settings():
 
         db.set_setting("notify_enabled", notify_enabled)
         db.set_notify_persistent(request.form.get("notify_persistent") == "on")
-        db.set_sound_volume(request.form.get("sound_volume", 70))
         db.set_eligible_tiers(eligible_tiers)
         db.set_kind_enabled("cumulative", kind_cumulative)
         db.set_kind_enabled("streak", kind_streak)
@@ -625,6 +624,13 @@ def upload_sound():
 
     db.set_custom_sound(filename)
     return redirect(url_for("main.settings", saved=1))
+
+
+@bp.route("/settings/sound/volume", methods=["POST"])
+def set_sound_volume_route():
+    """効果音の音量だけを保存する(OBS連携セクション内で完結させるため)。"""
+    db.set_sound_volume(request.form.get("sound_volume", 70))
+    return jsonify({"ok": True, "volume": db.get_sound_volume()})
 
 
 @bp.route("/settings/sound/delete", methods=["POST"])

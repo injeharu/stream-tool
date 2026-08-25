@@ -48,6 +48,94 @@ def _find_window():
     return found[0] if found else None
 
 
+def _profile_dir():
+    """専用ウィンドウ用のブラウザ設定の置き場(固定)。"""
+    return os.path.join(config.DATA_DIR, "browser_profile")
+
+
+def _remember_spawned(pid, profile):
+    with _spawned_lock:
+        _spawned_pids.add(pid)
+        _spawned_profiles.add(profile)
+
+
+def _get_window_pid(hwnd):
+    user32 = ctypes.windll.user32
+    pid = ctypes.c_ulong()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return pid.value
+
+
+def _pids_using_our_profile():
+    """このツール専用プロファイルで動いているブラウザのプロセスIDを集める。
+
+    ブラウザは起動後に子プロセスへ処理を渡すことがあり、最初に起動した
+    プロセスIDだけでは窓を特定できないため、プロファイルの場所で判別する。"""
+    with _spawned_lock:
+        pids = set(_spawned_pids)
+    # プロファイルの置き場は固定なので、起動記録が無くても(アプリ再起動後でも)判別できる
+    profiles = {_profile_dir()}
+    profiles.update(_spawned_profiles)
+
+    for profile in profiles:
+        script = (
+            "Get-CimInstance Win32_Process -Filter \"Name='msedge.exe' or Name='chrome.exe'\" | "
+            f"Where-Object {{ $_.CommandLine -like '*{profile}*' }} | "
+            "Select-Object -ExpandProperty ProcessId"
+        )
+        try:
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+                capture_output=True, text=True, timeout=8,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            for line in (result.stdout or "").split():
+                if line.strip().isdigit():
+                    pids.add(int(line.strip()))
+        except Exception:
+            pass
+    return pids
+
+
+def close_all():
+    """このツールが開いた専用ウィンドウだけを閉じる(アプリ終了時に呼ぶ)。
+
+    ブラウザ側のJavaScriptでは自分の窓を閉じられない制限があるため、
+    アプリ側からWindowsに「閉じる」を指示する。
+    利用者が普段使いのブラウザで管理画面を開いていた場合に、そのウィンドウ
+    (他のタブを含む)まで巻き添えで閉じないよう、自分で起動した窓に限定する。"""
+    if sys.platform != "win32":
+        return 0
+
+    pids = _pids_using_our_profile()
+    if not pids:
+        return 0
+
+    user32 = ctypes.windll.user32
+    WM_CLOSE = 0x0010
+    targets = []
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def callback(hwnd, _lparam):
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        length = user32.GetWindowTextLengthW(hwnd)
+        if length == 0:
+            return True
+        buf = ctypes.create_unicode_buffer(length + 1)
+        user32.GetWindowTextW(hwnd, buf, length + 1)
+        if TITLE_MARK in buf.value or buf.value.strip() == ERROR_TITLE:
+            # 自分が起動したブラウザのウィンドウかどうかを確認する
+            if _get_window_pid(hwnd) in pids:
+                targets.append(hwnd)
+        return True
+
+    user32.EnumWindows(callback, 0)
+    for hwnd in targets:
+        user32.PostMessageW(hwnd, WM_CLOSE, 0, 0)
+    return len(targets)
+
+
 def _bring_to_front(hwnd):
     user32 = ctypes.windll.user32
     SW_RESTORE = 9
@@ -85,6 +173,10 @@ def _wait_for_server(timeout=10):
 
 
 _open_lock = threading.Lock()
+# 自分で起動したブラウザのプロセスID(終了時にこの窓だけを閉じるために覚えておく)
+_spawned_lock = threading.Lock()
+_spawned_pids = set()
+_spawned_profiles = set()
 
 
 def _open_or_focus_blocking(url):
@@ -99,15 +191,16 @@ def _open_or_focus_blocking(url):
         browser = _find_browser()
         if browser:
             # 専用プロファイルで独立したアプリ風ウィンドウとして起動する
-            profile = os.path.join(config.DATA_DIR, "browser_profile")
+            profile = _profile_dir()
             flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
             try:
-                subprocess.Popen(
+                proc = subprocess.Popen(
                     [browser, f"--app={url}", f"--user-data-dir={profile}",
                      "--no-first-run", "--no-default-browser-check"],
                     creationflags=flags,
                     close_fds=True,
                 )
+                _remember_spawned(proc.pid, profile)
             except OSError:
                 webbrowser.open(url)  # ブラウザが起動できない場合の保険
         else:

@@ -44,10 +44,14 @@ def _open_overlay_help(icon=None, item=None):
 
 
 def _quit(icon, item=None):
-    # 画面に残っている通知を片付けてから終了する
+    # 画面に残っている通知と管理画面のウィンドウを片付けてから終了する
     try:
         import notifier
         notifier.clear_all()
+    except Exception:
+        pass
+    try:
+        browser_window.close_all()
     except Exception:
         pass
     icon.visible = False

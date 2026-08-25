@@ -20,20 +20,23 @@
 
 <form method="post" action="{{ url_for('main.settings') }}">
 
-<div class="panel">
-  <h2>📡 基本設定</h2>
+<details class="section" open>
+  <summary>📡 基本設定 <span class="section-hint">監視するチャンネル</span></summary>
+  <div class="section-body">
   <div class="form-row">
     <label>チャンネル名</label>
     <input id="tour-channel-input" type="text" name="channel_name" value="{{ channel_name }}" placeholder="例: your_channel">
   </div>
-  <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-8px;">
+  <p class="hint">
     あなたのTwitchのユーザー名を入力してください(チャンネルのURLをそのまま貼ってもOK)。これだけで動きます。
     保存すると再起動なしで切り替わり、各画面もそのチャンネル専用のデータに切り替わります。
   </p>
-</div>
+  </div>
+</details>
 
-<div class="panel">
-  <h2>🎁 特典の条件</h2>
+<details class="section" open>
+  <summary>🎁 特典の条件 <span class="section-hint">何ヶ月で特典対象にするか</span></summary>
+  <div class="section-body">
 
   <div class="form-row">
     <label>判定対象</label>
@@ -98,10 +101,12 @@
       </p>
     </div>
   </div>
-</div>
+  </div>
+</details>
 
-<div class="panel">
-  <h2>🔔 通知と動作</h2>
+<details class="section" open>
+  <summary>🔔 通知と動作 <span class="section-hint">お知らせ・自動起動・更新</span></summary>
+  <div class="section-body">
   <div class="form-row">
     <label>デスクトップ通知</label>
     <input type="checkbox" name="notify_enabled" {% if notify_enabled %}checked{% endif %}>
@@ -111,13 +116,6 @@
     <label>通知を消えないように</label>
     <input type="checkbox" name="notify_persistent" {% if notify_persistent %}checked{% endif %}>
     <span style="font-size:0.85rem; color:var(--text-dim);">ONにすると、自分で閉じるまで通知が画面に残ります(配信中の見逃し防止)</span>
-  </div>
-  <div class="form-row">
-    <label>効果音の音量</label>
-    <input type="range" name="sound_volume" min="0" max="100" value="{{ sound_volume }}"
-           oninput="document.getElementById('vol-value').textContent = this.value + '%';" style="width:160px;">
-    <span id="vol-value" style="font-size:0.85rem;">{{ sound_volume }}%</span>
-    <span style="font-size:0.85rem; color:var(--text-dim);">OBSの祝福バナーで鳴る音の大きさです</span>
   </div>
   <div class="form-row">
     <label>PC起動時に自動起動</label>
@@ -140,14 +138,20 @@
     {% endif %}
   </div>
 
-  <button type="submit" class="btn btn-primary" style="width:auto; margin-top:8px;">💾 設定を保存</button>
+  </div>
+</details>
+
+<div style="margin: 0 0 20px;">
+  <button type="submit" class="btn btn-primary" style="width:auto;">💾 設定を保存</button>
+  <span class="hint" style="margin-left:10px;">上の3つのセクションの内容がまとめて保存されます</span>
 </div>
 
 </form>
 
-<div class="panel">
-  <h2>キーワードランキングの登録キーワード</h2>
-  <p style="color:var(--text-dim); font-size:0.85rem; margin-top:-8px;">
+<details class="section">
+  <summary>🔤 キーワード登録 <span class="section-hint">ランキングで数える言葉</span></summary>
+  <div class="section-body">
+  <p class="hint">
     表記ゆれはカンマ区切りで複数指定できます(例: かわいい, カワイイ, kawaii)。
   </p>
   <form method="post" action="{{ url_for('main.add_keyword') }}">
@@ -181,18 +185,20 @@
     </tbody>
   </table>
   {% else %}
-  <p style="color:var(--text-dim); font-size:0.85rem;">まだキーワードが登録されていません。</p>
+  <p class="hint">まだキーワードが登録されていません。</p>
   {% endif %}
-</div>
+  </div>
+</details>
 
-<div class="panel">
-  <h2>OBS連携(オーバーレイ)</h2>
-  <p style="color:var(--text-dim); font-size:0.85rem; margin-top:-8px;">
+<details class="section">
+  <summary>🖥 OBS連携 <span class="section-hint">配信画面への表示・効果音</span></summary>
+  <div class="section-body">
+  <p class="hint">
     以下のURLをOBSの「ブラウザ」ソースに貼ると、配信画面にランキングや到達祝福を表示できます。
   </p>
   <div style="margin-bottom:18px;">
-    <div style="font-weight:600; margin-bottom:6px;">🏆 ランキング表示
-      <span style="color:var(--text-dim); font-size:0.78rem; font-weight:400;">(OBSのブラウザソース 幅340・高さ420推奨)</span>
+    <div class="sub-heading">🏆 ランキング表示
+      <span style="color:var(--text-dim); font-size:0.78rem; font-weight:400;">(幅340・高さ420推奨)</span>
     </div>
     <div class="form-row">
       <label>種類</label>
@@ -218,7 +224,7 @@
   </div>
 
   <div>
-    <div style="font-weight:600; margin-bottom:6px;">🎉 節目到達の祝福バナー
+    <div class="sub-heading">🎉 節目到達の祝福バナー
       <span style="color:var(--text-dim); font-size:0.78rem; font-weight:400;">(幅700・高さ400推奨。紙吹雪と効果音つきで8秒間表示)</span>
     </div>
     <div class="form-row">
@@ -260,10 +266,22 @@
     document.getElementById("ov-alert-url").value = location.origin + "/overlay/alert";
 
     function previewSound() {
-      var vol = document.querySelector('input[name="sound_volume"]');
+      var vol = document.getElementById("sound-volume");
       var audio = new Audio("/sound/custom?t=" + Date.now());
       audio.volume = vol ? (parseInt(vol.value, 10) / 100) : 0.7;
       audio.play().catch(function () { alert("音源を再生できませんでした"); });
+    }
+
+    function saveVolume(value) {
+      var body = new URLSearchParams({ sound_volume: value });
+      fetch("/settings/sound/volume", { method: "POST", body: body })
+        .then(function (r) { return r.json(); })
+        .then(function () {
+          var el = document.getElementById("vol-saved");
+          el.textContent = "保存しました";
+          setTimeout(function () { el.textContent = ""; }, 1500);
+        })
+        .catch(function () {});
     }
 
     function checkUpdateNow() {
@@ -327,9 +345,18 @@
       <button type="submit" class="btn btn-primary" style="width:auto;">アップロード</button>
     </div>
   </form>
+  <div class="form-row">
+    <label>音量</label>
+    <input type="range" id="sound-volume" min="0" max="100" value="{{ sound_volume }}"
+           oninput="document.getElementById('vol-value').textContent = this.value + '%';"
+           onchange="saveVolume(this.value)" style="width:160px;">
+    <span id="vol-value" style="font-size:0.85rem;">{{ sound_volume }}%</span>
+    <span id="vol-saved" style="font-size:0.82rem; color:var(--success);"></span>
+    <span class="hint" style="margin:0;">内蔵音・カスタム音どちらにも効きます(動かすと自動保存)</span>
+  </div>
 
-  <h2 style="margin-top:20px; font-size:0.95rem;">🎬 テスト発火</h2>
-  <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-6px;">
+  <div class="sub-heading">🎬 テスト発火</div>
+  <p class="hint">
     OBSでの見え方を確認できます。押すと祝福バナーが実際に表示されます(記録には残りません)。
     <br>※OBSで音を出すには、ブラウザソースの設定で「ページの音声をミュート」のチェックを外してください。
   </p>
@@ -347,16 +374,19 @@
       <button type="submit" class="btn btn-primary" style="width:auto;">🎬 テスト表示する</button>
     </div>
   </form>
-</div>
+  </div>
+</details>
 
-<div class="panel">
-  <h2>既知の制約</h2>
-  <ul style="color:var(--text-dim); font-size:0.85rem; line-height:1.7;">
+<details class="section">
+  <summary>ℹ️ 既知の制約 <span class="section-hint">できないこと</span></summary>
+  <div class="section-body">
+  <ul style="color:var(--text-dim); font-size:0.85rem; line-height:1.7; margin:0; padding-left:20px;">
     <li>視聴者が再サブスク時に「共有しない」を選んだ場合、チャットに流れず自動取得できません。</li>
     <li>連続月数は、視聴者が連続表示を有効にしている場合のみ取得できます。</li>
     <li>過去のデータは遡れません。ツール稼働開始以降の再サブスクから蓄積されます。</li>
     <li>ツールが起動していない間のイベントは取得できません。配信開始前の起動を推奨します。</li>
   </ul>
-</div>
+  </div>
+</details>
 
 {% endblock %}
