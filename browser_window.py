@@ -11,6 +11,7 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 import webbrowser
 
@@ -83,29 +84,45 @@ def _wait_for_server(timeout=10):
     return False
 
 
+_open_lock = threading.Lock()
+
+
+def _open_or_focus_blocking(url):
+    # 同時に何度も押されても窓が複数開かないよう、処理は1つずつ行う
+    with _open_lock:
+        _wait_for_server()
+        hwnd = _find_window()
+        if hwnd:
+            _bring_to_front(hwnd)
+            return
+
+        browser = _find_browser()
+        if browser:
+            # 専用プロファイルで独立したアプリ風ウィンドウとして起動する
+            profile = os.path.join(config.DATA_DIR, "browser_profile")
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            try:
+                subprocess.Popen(
+                    [browser, f"--app={url}", f"--user-data-dir={profile}",
+                     "--no-first-run", "--no-default-browser-check"],
+                    creationflags=flags,
+                    close_fds=True,
+                )
+            except OSError:
+                webbrowser.open(url)  # ブラウザが起動できない場合の保険
+        else:
+            webbrowser.open(url)
+
+
 def open_or_focus(url=None):
-    """管理画面を開く。既に開いていれば前面に持ってくるだけ(多重防止)。"""
+    """管理画面を開く。既に開いていれば前面に持ってくるだけ(多重防止)。
+
+    サーバーの応答待ちで呼び出し元(トレイメニュー等)が固まらないよう、
+    実処理は別スレッドで行う。"""
     url = url or ADMIN_URL
 
     if sys.platform != "win32":
         webbrowser.open(url)
         return
 
-    _wait_for_server()
-    hwnd = _find_window()
-    if hwnd:
-        _bring_to_front(hwnd)
-        return
-
-    browser = _find_browser()
-    if browser:
-        # 専用プロファイルで独立したアプリ風ウィンドウとして起動する
-        profile = os.path.join(config.DATA_DIR, "browser_profile")
-        flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        subprocess.Popen(
-            [browser, f"--app={url}", f"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check"],
-            creationflags=flags,
-            close_fds=True,
-        )
-    else:
-        webbrowser.open(url)
+    threading.Thread(target=_open_or_focus_blocking, args=(url,), daemon=True).start()

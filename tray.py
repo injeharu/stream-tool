@@ -44,6 +44,12 @@ def _open_overlay_help(icon=None, item=None):
 
 
 def _quit(icon, item=None):
+    # 画面に残っている通知を片付けてから終了する
+    try:
+        import notifier
+        notifier.clear_all()
+    except Exception:
+        pass
     icon.visible = False
     icon.stop()
     # Flaskは別スレッドで動いているため、プロセスごと終了させる

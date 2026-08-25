@@ -9,6 +9,7 @@ import sys
 import threading
 import webbrowser
 
+import autostart
 import browser_window
 import config
 import db
@@ -63,21 +64,35 @@ def backup_db():
 def main():
     url = f"http://{config.FLASK_HOST}:{config.FLASK_PORT}"
 
+    # 通知クリック(tokutendaicho://)経由の呼び出しかどうか
+    via_protocol = any(arg.startswith("tokutendaicho:") for arg in sys.argv[1:])
+
     # 二重起動ガード(スタートアップ自動起動+手動起動が重なった場合など)
     if already_running():
-        print("すでに起動しています。管理画面を開きます。")
-        notifier.notify_info("すでに起動しています", "特典台帳は起動済みです。管理画面を開きます。", launch=url)
-        browser_window.open_or_focus(url)
+        if via_protocol:
+            # 通知クリック: 静かに管理画面を前面化するだけ(追加の通知は出さない)
+            browser_window.open_or_focus(url)
+        else:
+            print("すでに起動しています。管理画面を開きます。")
+            notifier.notify_info("すでに起動しています", "特典台帳は起動済みです。管理画面を開きます。", launch=url)
+            browser_window.open_or_focus(url)
         return
+
+    # 前回終了時・更新時に画面へ残った通知を掃除する
+    notifier.clear_all()
 
     backup_db()
     db.init_db()
     ranking.reload_keyword_cache()
     updater.start_background_check()
 
+    # 通知クリック(tokutendaicho://)でこのアプリが呼ばれるように登録する
+    autostart.register_url_protocol()
+
     channel = db.get_setting("channel_name")
-    # pythonw(スタートアップ起動)では sys.stdin が None になるため必ず存在確認する
-    if not channel and sys.stdin is not None and sys.stdin.isatty():
+    # pythonw(スタートアップ起動)では sys.stdin が None になるため必ず存在確認する。
+    # 通知クリック起動(via_protocol)では入力を求めない(待ちで固まらないように)
+    if not channel and not via_protocol and sys.stdin is not None and sys.stdin.isatty():
         # 入力が読めない環境(ダブルクリック起動など)でも落ちないよう必ず握りつぶす
         try:
             raw = input("監視するTwitchチャンネル名(またはチャンネルURL)を入力してください: ")

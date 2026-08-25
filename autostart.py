@@ -74,3 +74,31 @@ def disable():
             winreg.DeleteValue(key, VALUE_NAME)
     except FileNotFoundError:
         pass
+
+
+# ---------- 通知クリック用のURLスキーム(tokutendaicho://) ----------
+# Windows通知のボタンはOS経由でURLを開くため、普通のhttpだと既定ブラウザのタブが開いてしまう。
+# 独自スキームを自分のexeに関連付けることで、「アプリを呼び出す→既存の専用ウィンドウを前面化」にできる。
+
+PROTOCOL_NAME = "tokutendaicho"
+
+
+def register_url_protocol():
+    """tokutendaicho:// をこのアプリに関連付ける(ユーザー単位・管理者不要)。
+    起動のたびに登録し直すことで、インストール場所の変更にも追従する。"""
+    if not _AVAILABLE:
+        return
+    if config.IS_FROZEN:
+        command = f'"{sys.executable}" "%1"'
+    else:
+        command = f'"{_pythonw_path()}" "{APP_PY_PATH}" "%1"'
+
+    base = rf"Software\Classes\{PROTOCOL_NAME}"
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base) as key:
+            winreg.SetValueEx(key, None, 0, winreg.REG_SZ, "URL:特典台帳")
+            winreg.SetValueEx(key, "URL Protocol", 0, winreg.REG_SZ, "")
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base + r"\shell\open\command") as key:
+            winreg.SetValueEx(key, None, 0, winreg.REG_SZ, command)
+    except OSError as e:
+        print(f"[プロトコル登録エラー] {e}")

@@ -86,6 +86,11 @@ class AnonIrcClient:
                 if not data:
                     raise ConnectionError("サーバーから接続が切断されました")
                 buffer += data.decode("utf-8", errors="replace")
+                # 改行が来ないまま異常に溜まった場合は捨てる(メモリを食い潰さないための保険)
+                if len(buffer) > 1_000_000:
+                    print("[IRC] 受信バッファが異常に大きいため破棄しました")
+                    buffer = ""
+                    continue
                 while "\r\n" in buffer:
                     line, buffer = buffer.split("\r\n", 1)
                     self._handle_line(sock, line)

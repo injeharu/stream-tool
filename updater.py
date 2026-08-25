@@ -129,6 +129,13 @@ def _run_update():
 
         state.set_update_progress("installing", f"v{version} をインストールしています")
 
+        # 更新で本体が終了する前に、画面に残っている通知を片付けておく
+        try:
+            import notifier
+            notifier.clear_all()
+        except Exception:
+            pass
+
         # インストーラーは実行中の本体を自動終了させてから上書きする(setup.iss側の仕組み)。
         # このプロセス自身も終了させられるため、独立したbatに「インストール→本体再起動」を任せる。
         # (cmd /c に引用符入りの1行を渡す方式は引用符の解釈で壊れるため、batファイル経由にする)
@@ -139,11 +146,16 @@ def _run_update():
             f.write("@echo off\r\n")
             f.write(f'"{dest}" /SILENT /NORESTART\r\n')
             # ファイル差し替え直後の起動失敗を避けるため少し待ってから再起動する
-            f.write("timeout /t 2 /nobreak >nul\r\n")
-            f.write(f'start "" "{restart_target}"\r\n')
+            # (timeoutコマンドはコンソールが無いと動かないため、ping方式で約2秒待つ)
+            f.write("ping -n 3 127.0.0.1 >nul\r\n")
+            # 本体を新しいプロセスとして起動する。/B を付けないと
+            # 非表示batから起動された本体が一瞬コンソールを出すことがある
+            f.write(f'start "" /B "{restart_target}"\r\n')
             f.write('del "%~f0"\r\n')
 
-        flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        # CREATE_NO_WINDOW: batもその中のコマンドも一切ウィンドウを出さない
+        # (DETACHEDだとbat内のpingが一瞬黒い窓を出してしまう)
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         subprocess.Popen(["cmd", "/c", bat_path], creationflags=flags, close_fds=True)
     except Exception as e:
         state.set_update_progress("error", f"更新に失敗しました: {e}")

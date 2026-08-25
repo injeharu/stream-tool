@@ -13,7 +13,9 @@ import sys
 import config
 
 APP_ID = "配信サポートツール"
-ADMIN_URL = f"http://{config.FLASK_HOST}:{config.FLASK_PORT}"
+# 通知のクリック先。httpではなく独自スキームを使うことで、
+# 既定ブラウザの新規タブではなく「アプリの専用ウィンドウの前面化」につながる
+ADMIN_URL = "tokutendaicho://open"
 
 _IS_WINDOWS = sys.platform == "win32"
 
@@ -88,6 +90,26 @@ def notify_info(title, msg, launch=None, persistent=None):
         )
     except Exception as e:
         print(f"[通知エラー] {e}: {title} / {msg}")
+
+
+def clear_all():
+    """このアプリが出した通知をすべて消す(終了時・更新時・起動時の残留掃除に使う)。"""
+    if not _IS_WINDOWS:
+        return
+    script = (
+        "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, "
+        "ContentType = WindowsRuntime] > $null\n"
+        f'[Windows.UI.Notifications.ToastNotificationManager]::History.Clear("{APP_ID}")'
+    )
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True,
+            timeout=10,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except Exception:
+        pass
 
 
 def _persistent_enabled():

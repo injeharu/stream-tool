@@ -26,6 +26,10 @@ def get_connection():
         _conn.row_factory = sqlite3.Row
         _conn.execute("PRAGMA journal_mode=WAL")
         _conn.execute("PRAGMA foreign_keys=ON")
+        # コメントが多いチャンネルでも書き込みが詰まらないようにする。
+        # NORMALはWALと組み合わせる場合の推奨設定で、電源断でも
+        # データベースは壊れない(直近数件の記録が失われる可能性があるだけ)。
+        _conn.execute("PRAGMA synchronous=NORMAL")
     return _conn
 
 

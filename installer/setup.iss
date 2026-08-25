@@ -58,6 +58,8 @@ Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM {#AppExeName}"; Flags: runhi
 ; アプリ側で登録した「PC起動時に自動起動」の残骸を掃除する
 ; (残すと、存在しないexeをWindowsが毎回起動しようとするため)
 Filename: "reg.exe"; Parameters: "delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v TokutenDaicho /f"; Flags: runhidden; RunOnceId: "RemoveAutostart"
+; 通知クリック用URLスキーム(tokutendaicho://)の登録も掃除する
+Filename: "reg.exe"; Parameters: "delete HKCU\Software\Classes\tokutendaicho /f"; Flags: runhidden; RunOnceId: "RemoveProtocol"
 
 [Code]
 { 起動中のアプリを終了させる(インストール・アンインストールの前処理で使う) }
