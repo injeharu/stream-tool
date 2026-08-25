@@ -61,7 +61,14 @@ def _ps_safe(text):
 
 
 def notify_info(title, msg, launch=None, persistent=None):
-    """通知を表示する。persistent=Trueなら閉じるまで残す(既定は設定に従う)。"""
+    """通知を表示する。persistent=Trueなら閉じるまで残す(既定は設定に従う)。
+
+    「デスクトップ通知」がOFFなら、節目だけでなく起動時のお知らせなど
+    すべての通知を出さない(ゲーム中の割り込みを完全に止めるため)。"""
+    if not _notify_enabled():
+        print(f"[通知(OFF設定のため非表示)] {title}: {msg}")
+        return
+
     if persistent is None:
         persistent = _persistent_enabled()
 
@@ -112,11 +119,20 @@ def clear_all():
         pass
 
 
-def _persistent_enabled():
+def _notify_enabled():
     # dbのimportを関数内で行い、モジュール間の循環参照を避ける
+    try:
+        import db
+
+        return db.is_notify_enabled()
+    except Exception:
+        return False  # 判定できないときは出さない(ゲームへの割り込みを防ぐ側に倒す)
+
+
+def _persistent_enabled():
     try:
         import db
 
         return db.is_notify_persistent()
     except Exception:
-        return True
+        return False
