@@ -23,7 +23,7 @@ import config  # GITHUB_REPO を共有(リポジトリ名の二重管理を避�
 GITHUB_REPO = config.GITHUB_REPO
 
 EXCLUDE_DIR_NAMES = {
-    ".git", "__pycache__", ".venv", "venv", "backups", "browser_profile",
+    ".git", "__pycache__", ".venv", "venv", "backups", "browser_profile", "sounds",
     "dist", "build", "dist_installer", "installer",
 }
 # github_token.txt は絶対に配布ZIPへ入れない(トークン流出防止)

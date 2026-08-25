@@ -132,6 +132,18 @@ CREATE TABLE IF NOT EXISTS gift_events (
     occurred_at TEXT NOT NULL
 );
 
+-- 導入前の実績などを手で足すための調整値。
+-- 自動記録(gift_events/bits_events)とは別に持ち、
+-- 表示は「自動記録 + 調整値」。こうすることで調整しても自動記録が壊れない。
+CREATE TABLE IF NOT EXISTS manual_adjustments (
+    channel TEXT NOT NULL,
+    login TEXT NOT NULL,
+    kind TEXT NOT NULL,          -- 'gift' or 'bits'
+    amount INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT,
+    PRIMARY KEY (channel, login, kind)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT
@@ -714,6 +726,32 @@ def is_notify_enabled():
     return get_setting("notify_enabled", "1") == "1"
 
 
+def get_custom_sound():
+    """オーバーレイの効果音として登録されたファイル名。未設定なら空文字(内蔵音を使う)。"""
+    return get_setting("custom_sound", "") or ""
+
+
+def set_custom_sound(filename):
+    set_setting("custom_sound", filename or "")
+
+
+def get_sound_volume():
+    """効果音の音量(0〜100)。既定は70。"""
+    raw = get_setting("sound_volume", "70")
+    try:
+        return max(0, min(100, int(raw)))
+    except (TypeError, ValueError):
+        return 70
+
+
+def set_sound_volume(value):
+    try:
+        value = max(0, min(100, int(value)))
+    except (TypeError, ValueError):
+        value = 70
+    set_setting("sound_volume", str(value))
+
+
 def is_notify_persistent():
     """通知を「閉じるまで消さない」で出すか。既定はON(見逃し防止)。"""
     return get_setting("notify_persistent", "1") == "1"
@@ -908,35 +946,124 @@ def record_bits(channel, login, bits, occurred_at):
         conn.commit()
 
 
-def bits_ranking(period="all", limit=None, offset=0):
+def _event_ranking(table, value_column, kind, period, limit, offset):
+    """ビッツ・ギフトのランキング。累計表示のときだけ手入力の調整値を合算する。
+    (期間を絞ったときは「その期間の実績」を見たいので調整値は含めない)"""
     limit = limit or config.RANKING_TOP_N
     cutoff = _period_cutoff(period)
+    channel = current_channel()
+    include_manual = cutoff is None
 
-    sql = """
-        SELECT b.login, COALESCE(v.custom_name, v.display_name) AS display_name, SUM(b.bits) AS c
-        FROM bits_events b
-        LEFT JOIN viewers v ON v.channel = b.channel AND v.login = b.login
-        WHERE b.channel = ?
+    sql = f"""
+        SELECT e.login,
+               COALESCE(v.custom_name, v.display_name) AS display_name,
+               SUM(e.{value_column}) AS auto_total,
+               {"COALESCE(m.amount, 0)" if include_manual else "0"} AS manual_total
+        FROM {table} e
+        LEFT JOIN viewers v ON v.channel = e.channel AND v.login = e.login
+        LEFT JOIN manual_adjustments m
+               ON m.channel = e.channel AND m.login = e.login AND m.kind = ?
+        WHERE e.channel = ?
     """
-    params = [current_channel()]
+    params = [kind, channel]
     if cutoff:
-        sql += " AND b.occurred_at >= ?"
+        sql += " AND e.occurred_at >= ?"
         params.append(cutoff)
-    sql += " GROUP BY b.login ORDER BY c DESC LIMIT ? OFFSET ?"
-    params.append(limit)
-    params.append(offset)
+    sql += " GROUP BY e.login"
 
-    return _fetchall(sql, tuple(params))
+    if include_manual:
+        # 自動記録が無く調整値だけの人も一覧に出す
+        sql += f"""
+        UNION ALL
+        SELECT m.login,
+               COALESCE(v.custom_name, v.display_name) AS display_name,
+               0 AS auto_total,
+               m.amount AS manual_total
+        FROM manual_adjustments m
+        LEFT JOIN viewers v ON v.channel = m.channel AND v.login = m.login
+        WHERE m.channel = ? AND m.kind = ? AND m.amount <> 0
+          AND NOT EXISTS (
+              SELECT 1 FROM {table} e2 WHERE e2.channel = m.channel AND e2.login = m.login
+          )
+        """
+        params += [channel, kind]
+
+    outer = f"""
+        SELECT login, display_name, auto_total, manual_total,
+               (auto_total + manual_total) AS c
+        FROM ({sql})
+        ORDER BY c DESC LIMIT ? OFFSET ?
+    """
+    params += [limit, offset]
+    return _fetchall(outer, tuple(params))
+
+
+def _event_ranking_count(table, kind, period):
+    cutoff = _period_cutoff(period)
+    channel = current_channel()
+    sql = f"SELECT COUNT(DISTINCT login) AS c FROM (SELECT login FROM {table} WHERE channel = ?"
+    params = [channel]
+    if cutoff:
+        sql += " AND occurred_at >= ?"
+        params.append(cutoff)
+    else:
+        sql += (
+            " UNION SELECT login FROM manual_adjustments"
+            " WHERE channel = ? AND kind = ? AND amount <> 0"
+        )
+        params += [channel, kind]
+    sql += ")"
+    return _fetchone(sql, tuple(params))["c"]
+
+
+def bits_ranking(period="all", limit=None, offset=0):
+    return _event_ranking("bits_events", "bits", "bits", period, limit, offset)
 
 
 def bits_ranking_count(period="all"):
-    cutoff = _period_cutoff(period)
-    sql = "SELECT COUNT(DISTINCT b.login) AS c FROM bits_events b WHERE b.channel = ?"
-    params = [current_channel()]
-    if cutoff:
-        sql += " AND b.occurred_at >= ?"
-        params.append(cutoff)
-    return _fetchone(sql, tuple(params))["c"]
+    return _event_ranking_count("bits_events", "bits", period)
+
+
+# ---------- 手入力の調整値 ----------
+
+def get_adjustment(channel, login, kind):
+    row = _fetchone(
+        "SELECT amount FROM manual_adjustments WHERE channel=? AND login=? AND kind=?",
+        (channel, login, kind),
+    )
+    return row["amount"] if row else 0
+
+
+def set_adjustment(channel, login, kind, amount):
+    """手入力の調整値を設定する。0なら記録ごと削除する。"""
+    conn = get_connection()
+    with _lock:
+        if amount:
+            conn.execute(
+                """
+                INSERT INTO manual_adjustments (channel, login, kind, amount, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(channel, login, kind) DO UPDATE SET
+                    amount=excluded.amount, updated_at=excluded.updated_at
+                """,
+                (channel, login, kind, int(amount), _now()),
+            )
+        else:
+            conn.execute(
+                "DELETE FROM manual_adjustments WHERE channel=? AND login=? AND kind=?",
+                (channel, login, kind),
+            )
+        conn.commit()
+
+
+def get_auto_total(channel, login, kind):
+    """自動記録された分の合計(調整値を除く)。"""
+    table, column = ("gift_events", "count") if kind == "gift" else ("bits_events", "bits")
+    row = _fetchone(
+        f"SELECT COALESCE(SUM({column}), 0) AS c FROM {table} WHERE channel=? AND login=?",
+        (channel, login),
+    )
+    return row["c"] if row else 0
 
 
 # ---------- ギフトサブ(贈り主) ----------
@@ -952,34 +1079,11 @@ def record_gift(channel, login, count, occurred_at):
 
 
 def gift_ranking(period="all", limit=None, offset=0):
-    limit = limit or config.RANKING_TOP_N
-    cutoff = _period_cutoff(period)
-
-    sql = """
-        SELECT g.login, COALESCE(v.custom_name, v.display_name) AS display_name, SUM(g.count) AS c
-        FROM gift_events g
-        LEFT JOIN viewers v ON v.channel = g.channel AND v.login = g.login
-        WHERE g.channel = ?
-    """
-    params = [current_channel()]
-    if cutoff:
-        sql += " AND g.occurred_at >= ?"
-        params.append(cutoff)
-    sql += " GROUP BY g.login ORDER BY c DESC LIMIT ? OFFSET ?"
-    params.append(limit)
-    params.append(offset)
-
-    return _fetchall(sql, tuple(params))
+    return _event_ranking("gift_events", "count", "gift", period, limit, offset)
 
 
 def gift_ranking_count(period="all"):
-    cutoff = _period_cutoff(period)
-    sql = "SELECT COUNT(DISTINCT g.login) AS c FROM gift_events g WHERE g.channel = ?"
-    params = [current_channel()]
-    if cutoff:
-        sql += " AND g.occurred_at >= ?"
-        params.append(cutoff)
-    return _fetchone(sql, tuple(params))["c"]
+    return _event_ranking_count("gift_events", "gift", period)
 
 
 # ---------- チャンネル名の正規化 ----------

@@ -7,7 +7,10 @@ import os
 
 from urllib.parse import urlparse
 
-from flask import Flask, Blueprint, render_template, request, redirect, url_for, Response, abort, jsonify
+from flask import (
+    Flask, Blueprint, render_template, request, redirect, url_for,
+    Response, abort, jsonify, send_file,
+)
 
 import autostart
 import config
@@ -367,8 +370,38 @@ def ranking_page():
         total_pages=total_pages,
         page_window=_page_window(page, total_pages),
         rank_offset=offset,
+        adjust_error=request.args.get("adjust_error"),
         active="ranking",
     )
+
+
+@bp.route("/ranking/adjust", methods=["POST"])
+def ranking_adjust():
+    """ギフト・ビッツの手入力調整。自動記録は壊さず、調整分だけを設定する。"""
+    kind = request.form.get("kind", "")
+    if kind not in ("gift", "bits"):
+        return redirect(url_for("main.ranking_page"))
+
+    login = db.normalize_channel(request.form.get("login", "")) or ""
+    amount_raw = request.form.get("amount", "").strip()
+    display_name = request.form.get("display_name", "").strip()
+
+    if not login:
+        return redirect(url_for("main.ranking_page", tab=kind, adjust_error="login"))
+
+    try:
+        amount = int(amount_raw)
+    except ValueError:
+        return redirect(url_for("main.ranking_page", tab=kind, adjust_error="amount"))
+
+    # 入力ミスによる極端な値を防ぐ
+    amount = max(0, min(amount, 10_000_000))
+
+    channel = db.current_channel()
+    # 未知の視聴者でも一覧に名前が出るよう、最低限の情報を登録しておく
+    db.upsert_viewer(channel, login, display_name or login)
+    db.set_adjustment(channel, login, kind, amount)
+    return redirect(url_for("main.ranking_page", tab=kind, saved=1))
 
 
 @bp.route("/settings", methods=["GET", "POST"])
@@ -415,6 +448,7 @@ def settings():
 
         db.set_setting("notify_enabled", notify_enabled)
         db.set_notify_persistent(request.form.get("notify_persistent") == "on")
+        db.set_sound_volume(request.form.get("sound_volume", 70))
         db.set_eligible_tiers(eligible_tiers)
         db.set_kind_enabled("cumulative", kind_cumulative)
         db.set_kind_enabled("streak", kind_streak)
@@ -436,6 +470,9 @@ def settings():
         "streak_interval": db.get_interval("streak") or "",
         "notify_enabled": db.is_notify_enabled(),
         "notify_persistent": db.is_notify_persistent(),
+        "custom_sound": db.get_custom_sound(),
+        "sound_volume": db.get_sound_volume(),
+        "sound_error": request.args.get("sound_error"),
         "all_tiers": config.ALL_TIERS,
         "tier_labels": config.TIER_LABELS,
         "eligible_tiers": db.get_eligible_tiers(),
@@ -554,6 +591,79 @@ def api_overlay_latest_milestone():
             "name": row["display_name"] or row["login"],
             "kind": "通算" if row["kind"] == "cumulative" else "連続",
             "threshold": row["threshold"],
+        }
+    )
+
+
+@bp.route("/settings/sound", methods=["POST"])
+def upload_sound():
+    """オーバーレイのカスタム効果音を登録する。"""
+    file = request.files.get("sound")
+    if not file or not file.filename:
+        return redirect(url_for("main.settings"))
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in config.ALLOWED_SOUND_EXTENSIONS:
+        return redirect(url_for("main.settings", sound_error="type"))
+
+    os.makedirs(config.SOUND_DIR, exist_ok=True)
+    # 保存名は固定にして、古い音源が残り続けないようにする
+    for old in os.listdir(config.SOUND_DIR):
+        if old.startswith("custom"):
+            try:
+                os.remove(os.path.join(config.SOUND_DIR, old))
+            except OSError:
+                pass
+
+    filename = f"custom{ext}"
+    path = os.path.join(config.SOUND_DIR, filename)
+    file.save(path)
+
+    if os.path.getsize(path) > config.MAX_SOUND_BYTES:
+        os.remove(path)
+        return redirect(url_for("main.settings", sound_error="size"))
+
+    db.set_custom_sound(filename)
+    return redirect(url_for("main.settings", saved=1))
+
+
+@bp.route("/settings/sound/delete", methods=["POST"])
+def delete_sound():
+    """カスタム効果音を削除して内蔵音に戻す。"""
+    current = db.get_custom_sound()
+    if current:
+        path = os.path.join(config.SOUND_DIR, current)
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+    db.set_custom_sound("")
+    return redirect(url_for("main.settings", saved=1))
+
+
+@bp.route("/sound/custom")
+def serve_custom_sound():
+    """登録された効果音をオーバーレイへ配信する。"""
+    filename = db.get_custom_sound()
+    if not filename:
+        abort(404)
+    # 設定に保存された名前のみを使い、任意のパスを読み出せないようにする
+    safe_name = os.path.basename(filename)
+    path = os.path.join(config.SOUND_DIR, safe_name)
+    if not os.path.exists(path):
+        abort(404)
+    return send_file(path)
+
+
+@bp.route("/api/overlay/sound")
+def api_overlay_sound():
+    """オーバーレイ側が効果音の設定を取得するためのAPI。"""
+    return jsonify(
+        {
+            "custom": bool(db.get_custom_sound()),
+            "url": "/sound/custom" if db.get_custom_sound() else None,
+            "volume": db.get_sound_volume() / 100.0,
         }
     )
 

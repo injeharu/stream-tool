@@ -105,7 +105,39 @@
   var SHOW_MS = 8000;
   var COLORS = ["#9146ff", "#ff5c7a", "#ffb84d", "#3dd68c", "#4dd2ff", "#ffffff"];
 
-  /* 効果音: 外部ファイルを使わずブラウザ内で音を合成する(配布時に音源を同梱しなくて済む) */
+  /* 効果音の設定(カスタム音源が登録されていればそれを使う) */
+  var soundConfig = { custom: false, url: null, volume: 0.7 };
+  var customAudio = null;
+
+  function loadSoundConfig() {
+    fetch("/api/overlay/sound", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) {
+        soundConfig = cfg;
+        if (cfg.custom && cfg.url) {
+          customAudio = new Audio(cfg.url);
+          customAudio.volume = cfg.volume;
+          customAudio.load();
+        } else {
+          customAudio = null;
+        }
+      })
+      .catch(function () {});
+  }
+
+  function playSound() {
+    if (customAudio) {
+      try {
+        customAudio.currentTime = 0;
+        customAudio.volume = soundConfig.volume;
+        customAudio.play();
+        return;
+      } catch (e) { /* 再生できない場合は内蔵音にフォールバック */ }
+    }
+    playFanfare();
+  }
+
+  /* 内蔵音: 外部ファイルを使わずブラウザ内で音を合成する(配布時に音源を同梱しなくて済む) */
   var audioCtx = null;
   function playFanfare() {
     try {
@@ -123,7 +155,7 @@
         osc.type = "triangle";
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.25, start + 0.03);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.001, 0.35 * soundConfig.volume), start + 0.03);
         gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.55);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
@@ -160,7 +192,7 @@
     banner.classList.remove("out");
     banner.style.display = "block";
     launchConfetti(60);
-    playFanfare();
+    playSound();
 
     setTimeout(function () { banner.classList.add("out"); }, SHOW_MS - 600);
     setTimeout(function () { banner.style.display = "none"; }, SHOW_MS);
@@ -185,6 +217,8 @@
       .catch(function () {});
   }
 
+  loadSoundConfig();
+  setInterval(loadSoundConfig, 30000);  /* 設定変更を反映(OBSを再読込しなくて済むように) */
   poll();
   setInterval(poll, 3000);
 </script>

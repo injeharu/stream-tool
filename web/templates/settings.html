@@ -113,6 +113,13 @@
     <span style="font-size:0.85rem; color:var(--text-dim);">ONにすると、自分で閉じるまで通知が画面に残ります(配信中の見逃し防止)</span>
   </div>
   <div class="form-row">
+    <label>効果音の音量</label>
+    <input type="range" name="sound_volume" min="0" max="100" value="{{ sound_volume }}"
+           oninput="document.getElementById('vol-value').textContent = this.value + '%';" style="width:160px;">
+    <span id="vol-value" style="font-size:0.85rem;">{{ sound_volume }}%</span>
+    <span style="font-size:0.85rem; color:var(--text-dim);">OBSの祝福バナーで鳴る音の大きさです</span>
+  </div>
+  <div class="form-row">
     <label>PC起動時に自動起動</label>
     {% if autostart_available %}
     <input type="checkbox" name="autostart_enabled" {% if autostart_enabled %}checked{% endif %}>
@@ -252,6 +259,13 @@
     updateRankingUrl();
     document.getElementById("ov-alert-url").value = location.origin + "/overlay/alert";
 
+    function previewSound() {
+      var vol = document.querySelector('input[name="sound_volume"]');
+      var audio = new Audio("/sound/custom?t=" + Date.now());
+      audio.volume = vol ? (parseInt(vol.value, 10) / 100) : 0.7;
+      audio.play().catch(function () { alert("音源を再生できませんでした"); });
+    }
+
     function checkUpdateNow() {
       var btn = document.getElementById("check-update-btn");
       var result = document.getElementById("check-update-result");
@@ -283,6 +297,36 @@
         });
     }
   </script>
+
+  <h2 style="margin-top:20px; font-size:0.95rem;">🔊 祝福バナーの効果音</h2>
+  <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-6px;">
+    お好みの音源(mp3・wav・ogg・m4a など、10MBまで)に変えられます。未登録のときは内蔵のファンファーレが鳴ります。
+  </p>
+  {% if sound_error == 'type' %}
+  <p style="color:var(--danger); font-size:0.85rem;">対応していない形式です(mp3・wav・ogg・m4a・aac・flac・opus・webm)。</p>
+  {% elif sound_error == 'size' %}
+  <p style="color:var(--danger); font-size:0.85rem;">ファイルが大きすぎます(10MBまで)。</p>
+  {% endif %}
+  <div class="form-row">
+    <label>現在の音</label>
+    {% if custom_sound %}
+    <span style="font-size:0.85rem;">🎵 カスタム音源({{ custom_sound }})</span>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="previewSound()">▶ 試聴</button>
+    <form method="post" action="{{ url_for('main.delete_sound') }}" style="display:inline;"
+          onsubmit="return confirm('カスタム音源を削除して内蔵の音に戻しますか?');">
+      <button type="submit" class="btn btn-ghost btn-sm">削除</button>
+    </form>
+    {% else %}
+    <span style="font-size:0.85rem; color:var(--text-dim);">内蔵のファンファーレ</span>
+    {% endif %}
+  </div>
+  <form method="post" action="{{ url_for('main.upload_sound') }}" enctype="multipart/form-data">
+    <div class="form-row">
+      <label>音源を登録</label>
+      <input type="file" name="sound" accept="audio/*" required style="font-size:0.85rem;">
+      <button type="submit" class="btn btn-primary" style="width:auto;">アップロード</button>
+    </div>
+  </form>
 
   <h2 style="margin-top:20px; font-size:0.95rem;">🎬 テスト発火</h2>
   <p style="color:var(--text-dim); font-size:0.82rem; margin-top:-6px;">

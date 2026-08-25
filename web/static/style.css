@@ -516,6 +516,35 @@ input.num-sm {
   font-size: 1rem;
 }
 
+/* 画面が狭いとき(半分サイズのウィンドウなど)のレイアウト調整。
+   ラベルの最小幅と入力欄の固定幅が原因で行が崩れるのを防ぐ */
+@media (max-width: 1100px) {
+  .form-row {
+    align-items: flex-start;
+  }
+  /* ラベルは1行を占有し、その下に入力欄が整列する(縦積みで読みやすく) */
+  .form-row > label {
+    min-width: 0;
+    flex-basis: 100%;
+    margin-bottom: 2px;
+  }
+  /* チェックボックス等を内包するラベルは横並びのまま維持する */
+  .form-row > label:has(input[type="checkbox"]),
+  .form-row > label:has(input[type="radio"]) {
+    flex-basis: auto;
+  }
+  .form-row > input[type="text"],
+  .form-row > select,
+  .form-row > textarea {
+    flex: 1 1 220px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .form-row > span {
+    flex-basis: 100%;
+  }
+}
+
 .empty-state {
   color: var(--text-dim);
   text-align: center;
