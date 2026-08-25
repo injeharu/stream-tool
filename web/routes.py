@@ -53,6 +53,8 @@ def inject_status():
         # 「今見ているチャンネルの名簿を取り込み済みか」までを条件にして、
         # 別チャンネルを見ているときに的外れな案内が出ないようにする
         "twitch_linked": twitch_api.is_linked() and db.count_twitch_subscribers() > 0,
+        # 特典が一切作られない設定になっていたら、気づけるよう全画面で警告する
+        "milestone_problems": db.milestone_config_problems(),
     }
 
 
@@ -407,6 +409,16 @@ def ranking_adjust():
     db.upsert_viewer(channel, login, display_name or login)
     db.set_adjustment(channel, login, kind, amount)
     return redirect(url_for("main.ranking_page", tab=kind, saved=1))
+
+
+@bp.route("/milestones/recheck", methods=["POST"])
+def milestones_recheck():
+    """記録済みの全員を現在の設定で判定し直す(設定変更を既存の人へ反映する)。"""
+    try:
+        result = milestone.recheck_all()
+        return jsonify({"ok": True, **result})
+    except Exception:
+        return jsonify({"ok": False, "message": "再判定に失敗しました"})
 
 
 # ---------- Twitch連携(任意機能) ----------

@@ -63,6 +63,18 @@
     {% if request.args.get('saved') %}
       <div class="flash">保存しました</div>
     {% endif %}
+    {% if milestone_problems and active in ('index', 'settings', 'forecast') %}
+      <div class="panel" style="border-color:var(--danger); background:rgba(255,90,90,0.08); margin-bottom:16px;">
+        <p style="margin:0 0 6px; font-weight:700; color:var(--danger);">⚠ 特典が記録されない設定になっています</p>
+        <ul style="margin:0; padding-left:20px; font-size:0.88rem; line-height:1.7;">
+          {% for p in milestone_problems %}<li>{{ p }}</li>{% endfor %}
+        </ul>
+        <p style="margin:8px 0 0; font-size:0.85rem; color:var(--text-dim);">
+          {% if active != 'settings' %}<a href="{{ url_for('main.settings') }}">設定</a>で直せます。{% endif %}
+          直したあとは、設定画面の「🔁 全員を判定し直す」を押すと、この間に取りこぼした分を取り戻せます。
+        </p>
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </div>
 </div>

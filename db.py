@@ -472,6 +472,43 @@ def try_add_milestone(channel, login, kind, threshold, reached_at):
             return False
 
 
+def milestone_config_problems():
+    """「特典が1件も作られなくなる設定」になっていないかを調べ、問題点を日本語で返す。
+
+    ティアを全部外す・判定対象を両方オフにする・閾値を空にする、といった設定は
+    保存できてしまうが、その状態では節目が一切記録されない。
+    黙って止まると原因が分からないため、画面で警告するために使う。"""
+    problems = []
+
+    if not get_eligible_tiers():
+        problems.append(
+            "「対象ティア」が1つも選ばれていません。このままでは特典待ちに誰も載りません。"
+        )
+
+    kinds_on = [k for k in ("cumulative", "streak") if is_kind_enabled(k)]
+    if not kinds_on:
+        problems.append(
+            "「判定対象」の通算月数・連続月数が両方ともオフです。このままでは特典待ちに誰も載りません。"
+        )
+    else:
+        empty = []
+        for kind in kinds_on:
+            if not get_thresholds(kind) and not get_interval(kind):
+                empty.append("通算" if kind == "cumulative" else "連続")
+        if len(empty) == len(kinds_on):
+            problems.append(
+                f"{'・'.join(empty)}月数の閾値と繰り返し間隔が両方とも空です。"
+                "このままでは特典待ちに誰も載りません。"
+            )
+
+    return problems
+
+
+def count_all_milestones(channel):
+    """そのチャンネルの特典レコード総数(特典待ち・済み・対応不要すべて)。"""
+    return _fetchone("SELECT COUNT(*) AS c FROM milestones WHERE channel=?", (channel,))["c"]
+
+
 def list_pending_milestones():
     """特典待ち一覧。登録データは消さず、現在の設定(判定対象・特典対象ティア)で表示を絞る。"""
     channel = current_channel()

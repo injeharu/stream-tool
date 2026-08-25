@@ -129,6 +129,32 @@ def handle_manual_update(login, display_name, cumulative_months, streak_months, 
     _check_with_mode(channel, login, cumulative_months, streak_months, now, tier, False)
 
 
+def recheck_all():
+    """記録済みの全員を、現在の設定でもう一度判定する。
+
+    節目の判定は「新しいサブスクのイベントが届いた瞬間」にしか行われないため、
+    設定(閾値・対象ティア・数え方など)をあとから変えても、すでに記録済みの人には
+    反映されない。このずれを埋めるために使う。
+    足りない分を追加するだけで、すでにある特典を消したり戻したりはしない。"""
+    channel = db.current_channel()
+    rows = db.list_all_sub_states()
+    before = db.count_all_milestones(channel)
+
+    for row in rows:
+        _check_with_mode(
+            channel,
+            row["login"],
+            row["cumulative_months"],
+            row["streak_months"],
+            row["updated_at"] or _now(),
+            row["tier"],
+            False,  # まとめて判定するので通知は出さない
+        )
+
+    added = db.count_all_milestones(channel) - before
+    return {"people": len(rows), "added": added}
+
+
 def handle_privmsg(parsed):
     login = parsed.login
     channel = parsed.channel

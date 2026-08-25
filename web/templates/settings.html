@@ -158,6 +158,20 @@
 
 </form>
 
+<div class="panel" style="margin-bottom:14px;">
+  <h2 style="font-size:0.95rem;">🔁 記録済みの人を判定し直す</h2>
+  <p class="hint">
+    節目の判定は「新しいサブスクがチャットに流れた瞬間」に行われます。そのため、
+    <b>あとから閾値や対象ティアを変えても、すでに記録済みの人には反映されません</b>。
+    このボタンを押すと、今の設定で全員をもう一度判定して、足りない特典を追加します。
+    (すでにある特典が消えたり、履歴が戻ったりすることはありません)
+  </p>
+  <div class="form-row">
+    <button type="button" class="btn btn-primary" style="width:auto;" onclick="recheckAll()">🔁 全員を判定し直す</button>
+    <span id="recheck-result" style="font-size:0.85rem;"></span>
+  </div>
+</div>
+
 <details class="section">
   <summary>🔤 キーワード登録 <span class="section-hint">ランキングで数える言葉</span></summary>
   <div class="section-body">
@@ -280,6 +294,29 @@
       var audio = new Audio("/sound/custom?t=" + Date.now());
       audio.volume = vol ? (parseInt(vol.value, 10) / 100) : 0.7;
       audio.play().catch(function () { alert("音源を再生できませんでした"); });
+    }
+
+    function recheckAll() {
+      var el = document.getElementById("recheck-result");
+      el.style.color = "var(--text-dim)";
+      el.textContent = "判定し直しています...";
+      fetch("/milestones/recheck", { method: "POST" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.ok) {
+            el.style.color = "var(--danger)";
+            el.textContent = d.message || "再判定に失敗しました";
+            return;
+          }
+          el.style.color = "var(--success)";
+          el.textContent = d.added > 0
+            ? "✅ " + d.people + "人を確認し、" + d.added + "件の特典を追加しました"
+            : "✅ " + d.people + "人を確認しました(追加はありません)";
+        })
+        .catch(function () {
+          el.style.color = "var(--danger)";
+          el.textContent = "再判定に失敗しました";
+        });
     }
 
     function saveVolume(value) {
